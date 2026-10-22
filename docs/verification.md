@@ -1,5 +1,22 @@
 # Application verification
 
+## README developer guide — October 21, 2026
+
+- Extracted the README's exact HTML into a disposable local site on port 3000.
+  Used a separate temporary SQLite application on port 8000 with a demo project,
+  the documented allowed origin, anonymous chat enabled, and AI off.
+- Browser verification sent "Hello from my app!" through the widget, signed in
+  to the test administrator workspace, opened Live chat, replied "Hi! How can we
+  help?", and confirmed that reply appeared in the customer widget.
+- Runtime OpenAPI and protocol schema parity passed. README file links and
+  Markdown heading anchors resolve. The embedded Compose configuration still
+  exactly matches `compose.image.yaml`; edited files pass whitespace checks.
+- The three existing product-website screenshot URLs returned HTTP 200 with
+  the expected image content types. Images stay hosted with the product website.
+
+No production data, external AI, or live customer conversations were used.
+This documentation change did not publish a container or deploy an application.
+
 ## Docker README quickstart — October 21, 2026
 
 Extracted the embedded YAML into a temporary directory and validated it with

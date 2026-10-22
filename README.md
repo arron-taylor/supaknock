@@ -9,7 +9,8 @@
 
 <p align="center">
   <a href="https://supaknock.com">Website</a> ·
-  <a href="#quick-start">Quick start</a> ·
+  <a href="#quick-start">Install</a> ·
+  <a href="#your-first-chat-message">Try chat</a> ·
   <a href="https://supaknock.com/api-docs">API guide</a> ·
   <a href="docs/README.md">Documentation</a> ·
   <a href="https://supaknock.com/iphone">iPhone preview</a>
@@ -27,7 +28,47 @@ SupaKnock gives your team one place to reply to customers, review ideas, and col
 
 Run it in a single Docker container. SQLite works out of the box, with PostgreSQL and Supabase available when you need them. The core application needs no hosted SupaKnock account, email provider, Redis, or AI subscription.
 
+**For example:** you run a SaaS app. Customers ask for help through a chat bubble, suggest and vote on features on a feedback board, and join your beta through a form. Your team replies to messages, reviews ideas, and reads form answers in its SupaKnock workspace.
+
+One installation can serve multiple **projects**—one for each app or product. Each project has its own chat settings, boards, forms, and integration credentials.
+
 **[Explore SupaKnock →](https://supaknock.com)**
+
+## How it fits into your app
+
+```mermaid
+flowchart LR
+    Website["Your website"] <-->|"Chat widget"| SupaKnock["Your SupaKnock server"]
+    Backend["Your backend (optional)"] -->|"Authenticated API calls"| SupaKnock
+    Team["Your team"] <-->|"Admin workspace"| SupaKnock
+    SupaKnock --> Database["Your database"]
+```
+
+The widget talks directly to your SupaKnock server. For integrations that act as your signed-in users, your backend verifies the user and makes the trusted API calls. **Project secrets stay on your backend**; browser chat uses a separate, limited chat credential. Your team signs in to SupaKnock to reply and manage projects.
+
+## Pick your first integration
+
+| I want to… | Start here | Do I need my own backend? |
+| --- | --- | --- |
+| **Add customer chat** | Enable website chat and paste a small HTML snippet. [Try it below →](#your-first-chat-message) | **No** for anonymous website chat. **Yes** to connect your existing signed-in users. |
+| **Collect feature requests** | Create a board and share its SupaKnock link. [Feedback guide →](docs/integration.md) | **No** for built-in pages; participants sign in to SupaKnock. **Yes** for participation through your app's own users and interface. |
+| **Collect form submissions** | Create a form and enable its hosted public page, or its website embed. [Forms guide →](docs/forms.md) | **No** for hosted pages or enabled embeds. **Yes** for the backend token API. |
+
+<details>
+<summary><strong>See customer screens and an administrator preview</strong></summary>
+
+| Website chat | Feedback in your own app |
+| --- | --- |
+| <a href="https://supaknock.com/assets/showcase/glean-chat.jpg"><img src="https://supaknock.com/assets/showcase/glean-chat.jpg" width="420" alt="Glean's website with the SupaKnock chat panel open"></a> | <a href="https://supaknock.com/assets/showcase/glean-feedback.jpg"><img src="https://supaknock.com/assets/showcase/glean-feedback.jpg" width="420" alt="Glean's custom feedback page with feature request and bug report boards"></a> |
+| The embeddable chat widget, styled for Glean. This example has optional AI enabled. | Glean's custom feedback interface, built on the SupaKnock API. |
+
+Your team manages conversations in the web **Live chat** inbox. The **upcoming iPhone companion** provides another way to manage them; this preview shows sample data:
+
+<p align="center"><a href="https://supaknock.com/iphone"><img src="https://supaknock.com/assets/showcase/supaknock-chat.webp" width="240" alt="Upcoming SupaKnock iPhone companion: administrator chat inbox with sample data"></a></p>
+
+[Explore the web product preview](https://supaknock.com/#product) or [see more integrations](https://supaknock.com/examples). Screenshots are hosted on the product website; the iPhone companion is coming soon.
+
+</details>
 
 ## A small support desk, with room to grow
 
@@ -120,6 +161,61 @@ Run **one application instance** and preserve its volume and encryption key. For
 
 See [configuration](docs/configuration.md), [PostgreSQL and Supabase setup](docs/database-providers.md), and [backups, recovery, and upgrades](docs/operations.md).
 
+## Your first chat message
+
+After the [Docker quickstart](#quick-start), try a complete customer-to-team conversation. This example uses anonymous chat with AI off and needs no API key or custom backend.
+
+### 1. Create a project and enable chat
+
+In the administrator workspace, open **Overview → Create project**. Use `demo` as the identifier and `Demo app` as the name.
+
+Open that project's **Website chat** settings, check **Enable website chat**, add `http://localhost:3000` under **Allowed website origins**, and choose **Save chat settings**. Use that exact origin, with no trailing slash. Leave AI support off.
+
+### 2. Add the widget to a test page
+
+Create a separate `demo-site` directory and save this as its `index.html`:
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My app — support demo</title>
+  </head>
+  <body>
+    <h1>Welcome to my app</h1>
+    <p>Open the chat bubble to send our team a message.</p>
+
+    <div id="suggestion-box-chat"></div>
+    <script defer src="http://localhost:8000/widget.js"
+      data-server="http://localhost:8000"
+      data-project="demo"
+      data-target="#suggestion-box-chat"></script>
+  </body>
+</html>
+```
+
+The server URL is your SupaKnock installation; `data-project` is the project's identifier. For other installations, copy the generated snippet from that project's **Website chat** settings.
+
+### 3. Open the page and send a message
+
+Serve `demo-site` with your development server on port 3000. If you have Python 3 installed, run this **from inside `demo-site`**:
+
+```sh
+python3 -m http.server 3000 --bind 127.0.0.1
+```
+
+Visit **[http://localhost:3000](http://localhost:3000)**, open the chat bubble, and send **“Hello from my app!”** Use the HTTP address above rather than opening the HTML file directly. Keep this browser tab open.
+
+### 4. Reply from your workspace
+
+In another tab, sign in to **[http://localhost:8000/login](http://localhost:8000/login)** as your administrator. Open **Live chat**, select the new conversation, and reply **“Hi! How can we help?”**
+
+Return to your demo page: the reply appears in the widget. You now have a working support conversation between your website and your own SupaKnock installation.
+
+If chat does not appear, check that the project identifier is `demo`, website chat is enabled, and the page is opened at the allowed origin `http://localhost:3000`. `127.0.0.1:3000` is a different origin. See [widget setup and website security](docs/chat.md#add-the-widget) for CSP rules, appearance options, and production HTTPS setup.
+
 ## Make it part of your app
 
 Use the built-in widget and pages, or build your own interface against `/api/v1`. Backend project credentials stay on your server. SupaKnock keeps your user IDs opaque and scoped to each project; an external user ID is never a credential.
@@ -139,6 +235,32 @@ New feedback stays private until accepted. Form answers and administrator views 
 AI support, assistant tools, and public form pages are opt-in. Local knowledge search uses EmbeddingGemma, with weights downloaded only after an administrator explicitly requests them. External AI and embedding providers receive the data needed for their enabled features; [review the setup and data flow](docs/ai-providers.md) before activating them.
 
 Your application records stay in your installation database. Backups include the encryption key needed to restore encrypted settings. [Read the operations guide →](docs/operations.md)
+
+## Common questions
+
+**Does this work with my existing users?**
+
+Yes. Your backend authenticates your users and passes their exact project-scoped IDs. For authenticated customer chat, it exchanges its project credential for a short-lived customer chat credential. The default widget is anonymous and does not automatically inherit your app's login. [Authenticated chat →](docs/chat.md#integrate-authenticated-customers)
+
+**Do customers need another account?**
+
+Anonymous chat and public or embedded forms need no account. Built-in feedback pages require a SupaKnock participant account to submit or vote. A custom backend integration can let your users participate through their existing app accounts. An email submitted in a form or chat does not create or link an account.
+
+**Will this work with my framework or a native app?**
+
+The chat and form widgets use plain JavaScript and HTML. A React, Vue, or other client-rendered site can use the documented manual mounting options. Your backend and custom native interfaces can use the JSON API; there is no required frontend framework. [Chat mounting](docs/chat.md#match-your-website) · [Form embedding](docs/forms.md#embed-a-form-in-your-website) · [API guide](https://supaknock.com/api-docs)
+
+**Is AI required?**
+
+No. Human chat, feedback boards, and forms work with AI disabled. AI support, provider credentials, knowledge sources, and tools are configured separately and explicitly enabled.
+
+**Where does the data live, and what leaves my server?**
+
+Application records live in your chosen SQLite, PostgreSQL, or Supabase database. Enabled external AI providers receive the context needed to answer; external embedding providers receive approved passages and search questions. Configured webhooks send event payloads to your receiver; optional push uses a separate relay for generic alerts. Connected apps and MCP tools make requests to the services you configure. Read the [AI](docs/ai-providers.md), [webhook](docs/webhooks.md), [push](docs/push.md), and [MCP tool](docs/mcp-tools.md) guides before enabling those integrations.
+
+**Is the iPhone app included in this Docker image?**
+
+No. The image contains the web application and API. The optional iPhone administrator companion is coming soon and connects to your server; its source and push relay are maintained separately. [iPhone preview →](https://supaknock.com/iphone)
 
 ## Develop locally
 
