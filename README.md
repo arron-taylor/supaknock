@@ -36,13 +36,7 @@ One installation can serve multiple **projects**—one for each app or product. 
 
 ## How it fits into your app
 
-```mermaid
-flowchart LR
-    Website["Your website"] <-->|"Chat widget"| SupaKnock["Your SupaKnock server"]
-    Backend["Your backend (optional)"] -->|"Authenticated API calls"| SupaKnock
-    Team["Your team"] <-->|"Admin workspace"| SupaKnock
-    SupaKnock --> Database["Your database"]
-```
+![Your website, optional backend, and team connect to your SupaKnock server, which stores records in your database.](docs/integration-overview.svg)
 
 The widget talks directly to your SupaKnock server. For integrations that act as your signed-in users, your backend verifies the user and makes the trusted API calls. **Project secrets stay on your backend**; browser chat uses a separate, limited chat credential. Your team signs in to SupaKnock to reply and manage projects.
 

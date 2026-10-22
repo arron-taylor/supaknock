@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="355" viewBox="0 0 1000 355" role="img" aria-labelledby="title description">
+  <title id="title">How SupaKnock fits into your app</title>
+  <desc id="description">Your website exchanges messages directly with SupaKnock through the chat widget. Your optional backend makes trusted API calls. Your team uses the administrator workspace. SupaKnock stores application records in your database. Project secrets stay on your backend.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#637782" stroke-width="1.6" stroke-linejoin="round"/></marker>
+  </defs>
+  <rect x="1" y="1" width="998" height="353" rx="18" fill="#f6faf8" stroke="#d4e2db"/>
+  <g fill="none" stroke="#637782" stroke-width="2" marker-end="url(#arrow)">
+    <path d="M220 55 H330 V165 H420" marker-start="url(#arrow)"/>
+    <path d="M220 185 H420"/>
+    <path d="M220 315 H330 V205 H420" marker-start="url(#arrow)"/>
+    <path d="M650 185 H800"/>
+  </g>
+  <g fill="#ffffff" stroke="#c5d7cc" stroke-width="1.5">
+    <rect x="20" y="20" width="200" height="70" rx="12"/>
+    <rect x="20" y="150" width="200" height="70" rx="12"/>
+    <rect x="20" y="280" width="200" height="55" rx="12"/>
+    <rect x="800" y="150" width="180" height="70" rx="12"/>
+  </g>
+  <rect x="420" y="140" width="230" height="90" rx="14" fill="#d9f6e7" stroke="#23955c" stroke-width="2"/>
+  <g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif" text-anchor="middle" fill="#152e23">
+    <g font-size="19" font-weight="600">
+      <text x="120" y="61">Your website</text>
+      <text x="120" y="178">Your backend</text>
+      <text x="120" y="314">Your team</text>
+      <text x="535" y="178">SupaKnock</text>
+      <text x="890" y="191">Your database</text>
+    </g>
+    <g font-size="15" fill="#496354">
+      <text x="120" y="200">Optional</text>
+      <text x="535" y="204">Your server · one container</text>
+    </g>
+  </g>
+  <g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif" font-size="15" fill="#455d50">
+    <text x="241" y="43">Chat widget</text>
+    <text x="241" y="172">Trusted API calls</text>
+    <text x="241" y="302">Admin workspace</text>
+    <text x="689" y="172">Stores data</text>
+  </g>
+</svg>

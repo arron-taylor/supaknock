@@ -11,6 +11,8 @@
 - Runtime OpenAPI and protocol schema parity passed. README file links and
   Markdown heading anchors resolve. The embedded Compose configuration still
   exactly matches `compose.image.yaml`; edited files pass whitespace checks.
+- Replaced a stalled GitHub Mermaid rendering with a self-contained SVG diagram;
+  the SVG parses successfully and includes accessible title/description text.
 - The three existing product-website screenshot URLs returned HTTP 200 with
   the expected image content types. Images stay hosted with the product website.
 
