@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Capabilities": {
+      "properties": {
+        "summary": {
+          "default": false,
+          "title": "Summary",
+          "type": "boolean"
+        },
+        "users": {
+          "default": false,
+          "title": "Users",
+          "type": "boolean"
+        },
+        "profiles": {
+          "default": false,
+          "title": "Profiles",
+          "type": "boolean"
+        },
+        "activity": {
+          "default": false,
+          "title": "Activity",
+          "type": "boolean"
+        },
+        "user_activity": {
+          "default": false,
+          "title": "User Activity",
+          "type": "boolean"
+        }
+      },
+      "title": "Capabilities",
+      "type": "object"
+    },
+    "Coverage": {
+      "properties": {
+        "available_from": {
+          "anyOf": [
+            {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Available From"
+        },
+        "complete": {
+          "title": "Complete",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "complete"
+      ],
+      "title": "Coverage",
+      "type": "object"
+    },
+    "Protocol": {
+      "properties": {
+        "major": {
+          "const": 1,
+          "default": 1,
+          "title": "Major",
+          "type": "integer"
+        },
+        "minor": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Minor",
+          "type": "integer"
+        }
+      },
+      "title": "Protocol",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "protocol": {
+      "$ref": "#/$defs/Protocol"
+    },
+    "app_instance_id": {
+      "maxLength": 512,
+      "minLength": 1,
+      "title": "App Instance Id",
+      "type": "string"
+    },
+    "observed_at": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$",
+      "title": "Observed At",
+      "type": "string"
+    },
+    "capabilities": {
+      "$ref": "#/$defs/Capabilities"
+    },
+    "user_filters": {
+      "default": [],
+      "items": {
+        "enum": [
+          "query",
+          "joined_range"
+        ],
+        "type": "string"
+      },
+      "maxItems": 2,
+      "title": "User Filters",
+      "type": "array"
+    },
+    "link_origins": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 8,
+      "title": "Link Origins",
+      "type": "array"
+    },
+    "activity_history": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Coverage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "activity_definition": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Activity Definition"
+    }
+  },
+  "required": [
+    "protocol",
+    "app_instance_id",
+    "observed_at",
+    "capabilities"
+  ],
+  "title": "Manifest",
+  "type": "object"
+}

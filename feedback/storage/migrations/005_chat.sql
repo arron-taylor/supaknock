@@ -1,0 +1,10 @@
+CREATE TABLE chat_settings (project_id TEXT PRIMARY KEY REFERENCES projects(id), enabled INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0,1)), origins TEXT NOT NULL DEFAULT '[]', version INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE chat_conversations (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id), state TEXT NOT NULL DEFAULT 'open' CHECK(state IN ('open','closed')), version INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, last_sequence INTEGER NOT NULL DEFAULT 0, first_message_at TEXT, first_reply_at TEXT, last_alert_at REAL);
+CREATE INDEX chat_conversations_project ON chat_conversations(project_id,state,updated_at,id);
+CREATE INDEX chat_response_samples ON chat_conversations(project_id,first_message_at);
+CREATE TABLE chat_sessions (id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL REFERENCES chat_conversations(id), token_hash TEXT NOT NULL UNIQUE, origin TEXT NOT NULL, created_at TEXT NOT NULL, expires_at REAL NOT NULL, revoked_at TEXT, read_sequence INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX chat_sessions_conversation ON chat_sessions(conversation_id);
+CREATE TABLE chat_messages (id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL REFERENCES chat_conversations(id), sequence INTEGER NOT NULL, client_message_id TEXT NOT NULL, sender TEXT NOT NULL CHECK(sender IN ('visitor','admin')), sender_id TEXT NOT NULL, body TEXT NOT NULL CHECK(length(body) BETWEEN 1 AND 4000), created_at TEXT NOT NULL, UNIQUE(conversation_id,sequence), UNIQUE(conversation_id,sender_id,client_message_id));
+CREATE TABLE chat_reads (conversation_id TEXT NOT NULL REFERENCES chat_conversations(id), user_id TEXT NOT NULL REFERENCES users(id), read_sequence INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(conversation_id,user_id));
+CREATE TABLE chat_tickets (token_hash TEXT PRIMARY KEY, conversation_id TEXT NOT NULL REFERENCES chat_conversations(id), kind TEXT NOT NULL CHECK(kind IN ('visitor','admin')), session_id TEXT NOT NULL, user_id TEXT, origin TEXT, expires_at REAL NOT NULL);
+CREATE INDEX chat_tickets_expiry ON chat_tickets(expires_at);

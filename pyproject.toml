@@ -1,0 +1,21 @@
+[project]
+name = "suggestion-box"
+version = "0.2.0"
+license = "MIT"
+description = "Self-hosted, moderated feedback with a complete API and durable webhooks"
+requires-python = ">=3.12"
+dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.34,<1", "websockets>=16,<17", "cryptography>=44", "argon2-cffi>=23", "httpx>=0.28,<1", "sqlite-vec==0.1.9", "psycopg[binary]==3.3.6"]
+[project.optional-dependencies]
+test = ["pytest>=8", "httpx>=0.28,<1"]
+# Install the CPU torch wheel from its official index first; see docs/ai-runtime.md.
+# The normal app/test installation does not need these heavy runtime packages.
+ai = ["sentence-transformers==6.1.0", "transformers==5.18.0", "torch==2.14.1+cpu", "tokenizers==0.23.2", "safetensors==0.8.0"]
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+[tool.setuptools.packages.find]
+include = ["feedback*"]
+[tool.setuptools.package-data]
+feedback = ["web/*", "storage/migrations/*.sql", "storage/postgres_migrations/*.sql", "ai_model_manifest.json"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]

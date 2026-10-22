@@ -1,0 +1,2 @@
+ALTER TABLE forms ADD COLUMN embed_enabled INTEGER NOT NULL DEFAULT 0 CHECK(embed_enabled IN (0,1));
+ALTER TABLE forms ADD COLUMN embed_origins TEXT NOT NULL DEFAULT '[]';

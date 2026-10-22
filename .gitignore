@@ -1,0 +1,25 @@
+# Local state and credentials must never enter a repository.
+.DS_Store
+.venv/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.env
+.env.*
+!.env.example
+creds.txt
+**/creds.txt
+*.sqlite*
+*.db
+*.pem
+*.key
+*.p8
+*.p12
+data/
+.cache/
+models/
+*.safetensors
+*.gguf
+*.onnx

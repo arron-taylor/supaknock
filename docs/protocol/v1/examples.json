@@ -1,0 +1,141 @@
+{
+  "requests": {
+    "manifest": {},
+    "summary": {
+      "from": "2026-10-01T00:00:00Z",
+      "until": "2026-10-06T00:00:00Z"
+    },
+    "users": {
+      "limit": 50,
+      "query": "",
+      "joined": null,
+      "cursor": null
+    },
+    "profile": {
+      "user_id": "Customer A"
+    },
+    "activity": {
+      "from": "2026-10-01T00:00:00Z",
+      "until": "2026-10-06T00:00:00Z",
+      "limit": 50,
+      "user_id": null,
+      "cursor": null
+    }
+  },
+  "responses": {
+    "manifest": {
+      "protocol": {
+        "major": 1,
+        "minor": 0
+      },
+      "app_instance_id": "fixture-production",
+      "observed_at": "2026-10-05T12:00:00Z",
+      "capabilities": {
+        "summary": true,
+        "users": true,
+        "profiles": true,
+        "activity": true,
+        "user_activity": true
+      },
+      "user_filters": [
+        "query",
+        "joined_range"
+      ],
+      "link_origins": [
+        "https://app.example.com"
+      ],
+      "activity_history": {
+        "available_from": null,
+        "complete": true
+      }
+    },
+    "summary": {
+      "protocol": {
+        "major": 1,
+        "minor": 0
+      },
+      "app_instance_id": "fixture-production",
+      "observed_at": "2026-10-05T12:00:00Z",
+      "interval": {
+        "from": "2026-10-01T00:00:00Z",
+        "until": "2026-10-06T00:00:00Z"
+      },
+      "total_accounts": {
+        "count": 1
+      },
+      "new_accounts": {
+        "count": 1,
+        "basis": "current_accounts",
+        "complete": true
+      }
+    },
+    "users": {
+      "protocol": {
+        "major": 1,
+        "minor": 0
+      },
+      "app_instance_id": "fixture-production",
+      "observed_at": "2026-10-05T12:00:00Z",
+      "items": [
+        {
+          "id": "Customer A",
+          "display_name": "Avery",
+          "email": null,
+          "joined_at": "2026-10-01T10:00:00Z",
+          "phone_number": "+1 (312) 555-0142 ext. 9"
+        }
+      ],
+      "scan_until": "2026-10-05T12:00:00Z",
+      "expires_at": "2026-10-05T12:30:00Z",
+      "next_cursor": null
+    },
+    "profile": {
+      "protocol": {
+        "major": 1,
+        "minor": 0
+      },
+      "app_instance_id": "fixture-production",
+      "observed_at": "2026-10-05T12:00:00Z",
+      "user": {
+        "id": "Customer A",
+        "display_name": "Avery",
+        "email": null,
+        "joined_at": "2026-10-01T10:00:00Z",
+        "phone_number": "+1 (312) 555-0142 ext. 9"
+      },
+      "details": [
+        {
+          "key": "projects",
+          "label": "Projects",
+          "type": "number",
+          "value": 3
+        }
+      ],
+      "url": "https://app.example.com/admin/users/a"
+    },
+    "activity": {
+      "protocol": {
+        "major": 1,
+        "minor": 0
+      },
+      "app_instance_id": "fixture-production",
+      "observed_at": "2026-10-05T12:00:00Z",
+      "items": [
+        {
+          "id": "event-1",
+          "occurred_at": "2026-10-05T10:00:00.000001Z",
+          "type": "user.created",
+          "title": "Account created",
+          "user_id": "Customer A"
+        }
+      ],
+      "snapshot": "snapshot-1",
+      "expires_at": "2026-10-05T12:30:00Z",
+      "next_cursor": null,
+      "coverage": {
+        "available_from": null,
+        "complete": true
+      }
+    }
+  }
+}

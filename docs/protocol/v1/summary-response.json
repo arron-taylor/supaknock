@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Metric": {
+      "properties": {
+        "count": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Count"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "unsupported",
+                "history_incomplete"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        }
+      },
+      "required": [
+        "count"
+      ],
+      "title": "Metric",
+      "type": "object"
+    },
+    "NewAccounts": {
+      "properties": {
+        "count": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Count"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "unsupported",
+                "history_incomplete"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "basis": {
+          "enum": [
+            "current_accounts",
+            "signup_events"
+          ],
+          "title": "Basis",
+          "type": "string"
+        },
+        "complete": {
+          "title": "Complete",
+          "type": "boolean"
+        },
+        "available_from": {
+          "anyOf": [
+            {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Available From"
+        }
+      },
+      "required": [
+        "count",
+        "basis",
+        "complete"
+      ],
+      "title": "NewAccounts",
+      "type": "object"
+    },
+    "Protocol": {
+      "properties": {
+        "major": {
+          "const": 1,
+          "default": 1,
+          "title": "Major",
+          "type": "integer"
+        },
+        "minor": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Minor",
+          "type": "integer"
+        }
+      },
+      "title": "Protocol",
+      "type": "object"
+    },
+    "Range": {
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$",
+          "title": "From",
+          "type": "string"
+        },
+        "until": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$",
+          "title": "Until",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "until"
+      ],
+      "title": "Range",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "protocol": {
+      "$ref": "#/$defs/Protocol"
+    },
+    "app_instance_id": {
+      "maxLength": 512,
+      "minLength": 1,
+      "title": "App Instance Id",
+      "type": "string"
+    },
+    "observed_at": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$",
+      "title": "Observed At",
+      "type": "string"
+    },
+    "interval": {
+      "$ref": "#/$defs/Range"
+    },
+    "total_accounts": {
+      "$ref": "#/$defs/Metric"
+    },
+    "new_accounts": {
+      "$ref": "#/$defs/NewAccounts"
+    }
+  },
+  "required": [
+    "protocol",
+    "app_instance_id",
+    "observed_at",
+    "interval",
+    "total_accounts",
+    "new_accounts"
+  ],
+  "title": "Summary",
+  "type": "object"
+}

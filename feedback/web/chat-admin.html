@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#171717">
+  <title>Conversations · SupaKnock</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/brand.svg">
+  <link rel="stylesheet" href="/assets/style.css">
+  <link rel="stylesheet" href="/assets/chat.css">
+  <script defer src="/assets/shell.js"></script>
+  <script defer src="/assets/chat-presentation.js"></script>
+  <script defer src="/chat-admin.js"></script>
+</head>
+<body class="chat-page">
+  <a class="skip-link" href="#chat-admin">Skip to conversations</a>
+  <div id="shell"></div>
+  <div class="workspace">
+    <main id="chat-admin" class="chat-main" aria-busy="true" tabindex="-1">
+      <div class="skeleton-set skeleton-page" role="status"><span class="visually-hidden">Loading your inbox…</span><div class="skeleton-heading" aria-hidden="true"><span class="skeleton-block skeleton-line"></span><span class="skeleton-block skeleton-line is-short"></span></div><div class="skeleton-item" aria-hidden="true"><span class="skeleton-block skeleton-symbol"></span><div class="skeleton-copy"><span class="skeleton-block skeleton-line"></span><span class="skeleton-block skeleton-line is-short"></span></div></div><div class="skeleton-item" aria-hidden="true"><span class="skeleton-block skeleton-symbol"></span><div class="skeleton-copy"><span class="skeleton-block skeleton-line"></span><span class="skeleton-block skeleton-line is-short"></span></div></div></div>
+    </main>
+  </div>
+</body>
+</html>

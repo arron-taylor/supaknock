@@ -1,0 +1,33 @@
+# Preserve the original checkout's default volume/project identity after relocation.
+# Existing custom -p / COMPOSE_PROJECT_NAME values still take precedence.
+name: suggestionbox
+
+services:
+  supaknock:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${HOST_PORT:-8000}:8000"
+    environment:
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
+      DATABASE_PROVIDER: ${DATABASE_PROVIDER:-sqlite}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:///data/feedback.sqlite}
+      DATA_DIR: /data
+      APPLICATION_SECRET: ${APPLICATION_SECRET:-}
+      SETUP_TOKEN: ${SETUP_TOKEN:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-true}
+      ALLOW_INTERNAL_WEBHOOKS: ${ALLOW_INTERNAL_WEBHOOKS:-false}
+      ALLOW_INTERNAL_RELAY: ${ALLOW_INTERNAL_RELAY:-false}
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-60}
+      AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:-10}
+    volumes:
+      - feedback_data:/data
+    stop_grace_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+volumes:
+  feedback_data:
