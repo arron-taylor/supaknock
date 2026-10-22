@@ -44,24 +44,73 @@ Shared notifications and configurable business hours help your team follow up. A
 
 ## Quick start
 
-Install [Docker with Compose](https://docs.docker.com/compose/install/). Save [compose.image.yaml](compose.image.yaml) as `compose.yaml` in a **new installation directory**, then run:
+### 1. Use the published Docker Hub image
+
+The prebuilt application image is **[`taylorarronj/supaknock:latest` on Docker Hub](https://hub.docker.com/r/taylorarronj/supaknock)**. Its full image address is `docker.io/taylorarronj/supaknock:latest`, with builds for AMD64 and ARM64. You can run it without cloning this repository or building the application yourself.
+
+Install [Docker with Compose](https://docs.docker.com/compose/install/), then create a **new installation directory**:
+
+```sh
+mkdir supaknock
+cd supaknock
+```
+
+### 2. Create `compose.yaml`
+
+Save the following as `compose.yaml` in that directory. The `image` line tells Docker Compose to pull the published image from Docker Hub. The named volume keeps your SQLite database and generated secrets across container restarts and upgrades.
+
+```yaml
+name: suggestionbox
+
+services:
+  supaknock:
+    image: taylorarronj/supaknock:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      PUBLIC_BASE_URL: http://localhost:8000
+      COOKIE_SECURE: "false"
+      DATABASE_PROVIDER: sqlite
+      DATABASE_URL: sqlite:///data/feedback.sqlite
+    volumes:
+      - feedback_data:/data
+    stop_grace_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+volumes:
+  feedback_data:
+```
+
+This is the same configuration as [compose.image.yaml](compose.image.yaml). It runs locally at `http://localhost:8000`; see [Put it on your domain](#put-it-on-your-domain) before exposing it publicly.
+
+### 3. Pull the image and start SupaKnock
+
+Run these commands from the directory containing `compose.yaml`:
 
 ```sh
 docker compose pull supaknock
 docker compose up -d supaknock
+docker compose ps
 ```
 
-Read your one-time setup token:
+The first command downloads `taylorarronj/supaknock:latest` from Docker Hub. The second starts it in the background. Wait for `docker compose ps` to show the service as **healthy** before continuing.
+
+### 4. Read `setup.token` and create your administrator
+
+On first startup, SupaKnock generates a private setup token at `/data/setup.token` inside the container. Read it with:
 
 ```sh
 docker compose exec supaknock cat /data/setup.token
 ```
 
-Open **[localhost:8000/setup](http://localhost:8000/setup)** and use the token to create your first administrator. Setup closes permanently after that account is created.
+Copy the printed token, open **[http://localhost:8000/setup](http://localhost:8000/setup)**, and enter it with the email and password for your first administrator account. Keep the token private. If you explicitly set a `SETUP_TOKEN` environment variable, use that value instead of the generated file.
 
-From the workspace, create a project, add a feedback board, enable website chat, or create a form. Your installation normally opens at `/login`. Share direct board and project links so visitors can read published feedback; participants sign in to submit ideas or vote.
+Setup closes permanently after the first administrator is created. For later visits, sign in at **[http://localhost:8000/login](http://localhost:8000/login)** with your administrator email and password; you do not need the setup token again.
 
-The example uses the published [`taylorarronj/supaknock`](https://hub.docker.com/r/taylorarronj/supaknock) image, binds to localhost, and stores data in a persistent Docker volume. It supports AMD64 and ARM64.
+From the workspace, create a project, add a feedback board, enable website chat, or create a form. Share direct board and project links so visitors can read published feedback; participants sign in to submit ideas or vote.
 
 ### Put it on your domain
 

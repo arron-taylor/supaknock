@@ -1,5 +1,16 @@
 # Application verification
 
+## Docker README quickstart — October 21, 2026
+
+Extracted the embedded YAML into a temporary directory and validated it with
+Docker Compose. Its normalized configuration exactly matches
+`compose.image.yaml`, including the image, volume and localhost binding.
+README local file links resolve, and edited files pass whitespace checks.
+The setup-token path and environment override were checked against runtime
+configuration; the documented health status uses the existing image healthcheck.
+No container was started, image published, or deployment performed for this
+documentation-only update.
+
 ## Initial source and README review — October 21, 2026
 
 - 18 API documentation/OpenAPI tests passed against disposable local state.

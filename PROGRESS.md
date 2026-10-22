@@ -1,5 +1,12 @@
 # Application progress
 
+## Docker README quickstart — October 21, 2026
+
+The README identifies Docker Hub and the full published image address, embeds
+the complete published-image Compose configuration, and walks through pulling,
+startup health, reading `/data/setup.token`, first-administrator setup and later
+sign-in. No application behavior or deployment configuration changed.
+
 ## Initial repository README — October 21, 2026
 
 Prepared the standalone application for the private `arron-taylor/supaknock`
