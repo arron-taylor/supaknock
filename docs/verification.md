@@ -1,3 +1,27 @@
+## AI setup release published and deployed — October 27, 2026
+
+Published application commit `7df64b4`, including the unified answer setup,
+Ramp verification timeout handling and the previously committed authorization
+fixes. Docker Hub `taylorarronj/supaknock:latest` and
+`2026.10.27-ai-setup` resolve to the same AMD64/ARM64 index:
+`sha256:affe6c35c085d359c577582dcb0d77e440b922e8f6b317635fd1fa4b51d05e7a`.
+
+The final AMD64 image passed the full disposable container smoke, including
+restart, recreation, backup/restore, authorization and private state checks;
+the final ARM64 candidate passed the same smoke before publication. The 29
+additional SQLite security tests passed. Earlier focused UI/API and provider
+results, including known broader-suite failures, are recorded below.
+
+Owner-authorized application deployment passed an isolated, network-disabled
+rehearsal against a private backup. All 129 deployed runtime source files match
+the published checkout. Existing records, volume, environment, installation
+identity, effective secrets, relay configuration, AI settings and key bindings
+were preserved. Compose was unchanged and no unrelated containers were replaced.
+The live container is healthy; public readiness, widget, AI assets and OpenAPI
+match the release. A signed-in browser verified the combined setup card with
+the saved Ramp Router / gpt-6-luna selection, verified status and AI still enabled.
+No new live AI inference or general answer-quality benchmark was performed.
+
 ## Unified answer-provider setup — October 27, 2026
 
 Replaced three separate answer-provider forms with one local draft for provider,
