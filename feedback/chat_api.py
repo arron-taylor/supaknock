@@ -421,18 +421,19 @@ def install_chat(app, storage, vault, config, actor):
     # The durable log is the source of truth. Polling from its cursor avoids lost
     # fan-out races and naturally restores delivery after reconnect/restart.
     connections = {}
-    pending_connections = set()
+    pending_connections = {}
 
     @app.websocket('/api/v1/chat/ws')
     async def socket(ws: WebSocket):
-        if len(connections) + len(pending_connections) >= 128:
+        peer = (ws.scope.get('client') or ('unknown',))[0]
+        if len(connections) + len(pending_connections) >= 128 or sum(1 for x in pending_connections.values() if x == peer) >= 8:
             await ws.close(code=1013)
             return
         origin = ws.headers.get('origin')
         if ws.query_params or (origin and origin != config.base_url and not storage.chat_origin_allowed(origin)):
             await ws.close(code=4403)
             return
-        pending_connections.add(ws)
+        pending_connections[ws] = peer
         await ws.accept()
         task = None
         try:
@@ -449,7 +450,7 @@ def install_chat(app, storage, vault, config, actor):
             if sum(1 for x in connections.values() if x['session_id']==p['session_id'])>=8:
                 raise Error(429,'rate_limited','Too many connections')
             connections[ws] = {**p,'conversation_id':cid}
-            pending_connections.discard(ws)
+            pending_connections.pop(ws, None)
             async def emit(data):
                 await asyncio.wait_for(ws.send_json(data),5)
             await emit({'type':'ready','conversation_id':cid})
@@ -515,7 +516,7 @@ def install_chat(app, storage, vault, config, actor):
                 pass
         finally:
             connections.pop(ws,None)
-            pending_connections.discard(ws)
+            pending_connections.pop(ws,None)
             if task:
                 task.cancel()
                 await asyncio.gather(task,return_exceptions=True)

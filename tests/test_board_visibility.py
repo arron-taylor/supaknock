@@ -87,6 +87,13 @@ def test_backend_intake_moderation_and_webhook_snapshots_still_work(workflow):
     assert any(x['id']==r['id'] for x in w['manager'].get('/api/v1/moderation').json()['items'])
     accepted=accept(w,r)
     assert w['trusted'].get('/api/v1/requests/'+r['id']).status_code == 200
+    aud_only,_=w['key'](p,['audience:read'])
+    assert aud_only.get('/api/v1/requests/'+r['id']+'/audience').status_code == 200
+    assert aud_only.get('/api/v1/requests/'+r['id']).status_code == 403
+    read_only,_=w['key'](p,['read'])
+    assert read_only.get('/api/v1/requests/'+r['id']+'/audience').status_code == 403
+    other_aud,_=w['key'](w['q'],['audience:read'])
+    assert other_aud.get('/api/v1/requests/'+r['id']+'/audience').status_code == 404
     assert w['other'].get('/api/v1/requests/'+r['id']).status_code == 404
     history=w['admin'].get('/api/v1/requests/'+r['id']+'/history').json()
     current=w['admin'].get('/api/v1/boards/'+b['id']).json()

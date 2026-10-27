@@ -1,5 +1,6 @@
 """SQLite connections, migrations, backup and local search primitives."""
 from contextlib import contextmanager
+import os
 from pathlib import Path
 import re
 import sqlite3
@@ -94,14 +95,28 @@ class SQLiteStorage(RelationalStorage):
             c.close()
 
     def backup(self, destination):
-        if Path(destination).resolve() == self.path.resolve() or Path(destination).exists():
+        destination = Path(destination)
+        if destination.resolve() == self.path.resolve() or destination.exists():
             raise RuntimeError("Backup destination must be a new file")
-        source, target = self.connect(), sqlite3.connect(destination)
         try:
+            os.close(os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600))
+        except FileExistsError:
+            raise RuntimeError("Backup destination must be a new file") from None
+        source = target = None
+        try:
+            source, target = self.connect(), sqlite3.connect(destination)
             source.backup(target)
+        except BaseException:
+            if target is not None:
+                target.close()
+                target = None
+            destination.unlink(missing_ok=True)
+            raise
         finally:
-            source.close()
-            target.close()
+            if source is not None:
+                source.close()
+            if target is not None:
+                target.close()
 
     @staticmethod
     def _has_ai_turns(c):

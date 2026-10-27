@@ -147,7 +147,8 @@ class FeedbackService:
         return [{k: e[k] for k in ('id', 'type', 'occurred_at')} | {'status': e['request']['status'], 'previous_status': (e.get('previous') or {}).get('status')} for e in events if e['type'] in ('request.accepted', 'request.status_changed')]
 
     def audience(self, rid, actor, limit, offset):
-        r = self.readable_request(rid, actor)
+        reader = replace(actor, permissions=actor.permissions + ('read',)) if actor.key_id and 'audience:read' in actor.permissions else actor
+        r = self.readable_request(rid, reader)
         self.scope(actor, r['project_id'])
         if not actor.can(r['project_id'], 'audience:read'):
             raise Error(403, 'forbidden', 'Audience permission required')

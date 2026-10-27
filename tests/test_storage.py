@@ -106,6 +106,7 @@ def test_restart_migrations_backup_and_recovery(workflow,tmp_path):
         assert {row[0] for row in c.execute('SELECT version FROM schema_migrations')} == {p.name for p in Path('feedback/storage/migrations').glob('*.sql')}
     backup=tmp_path/'backup.sqlite'
     db.backup(backup)
+    assert backup.stat().st_mode & 0o777 == 0o600
     restored=SQLiteStorage(backup,w['cfg'].base_url)
     assert restored.request(r['id'])['creator_id']==db.request(r['id'])['creator_id']
     assert restored.api_key(digest(w['k']['secret']))
@@ -113,6 +114,15 @@ def test_restart_migrations_backup_and_recovery(workflow,tmp_path):
     restored.recover_account('user@example.com',hasher.hash('local-recovery-password'))
     assert restored.session(digest(w['user'].cookies['feedback_session'])) is None
     with pytest.raises(RuntimeError):db.backup(backup)
+    failed_backup=tmp_path/'failed-backup.sqlite'
+    orig_connect=db.connect
+    def fail_connect():
+        raise RuntimeError('backup source failure')
+    db.connect=fail_connect
+    with pytest.raises(RuntimeError,match='backup source failure'):
+        db.backup(failed_backup)
+    db.connect=orig_connect
+    assert not failed_backup.exists()
     with db.transaction(True) as c:
         c.execute("INSERT INTO schema_migrations VALUES('999_future.sql','today')")
     with pytest.raises(RuntimeError,match='newer'):SQLiteStorage(w['cfg'].database_path,w['cfg'].base_url)

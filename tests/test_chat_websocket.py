@@ -77,3 +77,20 @@ def test_socket_native_revocation_and_no_cross_injection(workflow):
         with pytest.raises(WebSocketDisconnect):
             while True:ws.receive_json()
     assert other.get('/api/v1/chat/conversations/'+q['id']+'/messages').json()['items']==[]
+
+
+def test_socket_pending_handshake_cap_is_scoped_per_client_ip(workflow):
+    from contextlib import ExitStack
+    w=workflow;enable(w);v,c,_=visitor(w)
+    attacker=TestClient(w['app'],client=('198.51.100.77',50000))
+    legitimate=TestClient(w['app'],client=('198.51.100.88',50000))
+    with ExitStack() as stack:
+        for _ in range(8):
+            stack.enter_context(attacker.websocket_connect('/api/v1/chat/ws',headers={'Origin':ORIGIN}))
+        with pytest.raises(WebSocketDisconnect) as denied:
+            with attacker.websocket_connect('/api/v1/chat/ws',headers={'Origin':ORIGIN}):
+                pass
+        assert denied.value.code==1013
+        with legitimate.websocket_connect('/api/v1/chat/ws',headers={'Origin':ORIGIN}) as ws:
+            ws.send_json({'ticket':ticket(v,c),'after':0})
+            assert frame(ws,'ready')['conversation_id']==c['id']
