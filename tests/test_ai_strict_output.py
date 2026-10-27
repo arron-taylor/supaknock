@@ -7,7 +7,7 @@ from dataclasses import replace
 import httpx
 import pytest
 
-from feedback.ai_generation import AIGeneration, UNVERIFIED
+from feedback.ai_generation import AIGeneration, CHECK_UNAVAILABLE
 from feedback.ai_output import output_schema, render_context
 from feedback.ai_providers import KodeKeyProvider, GeminiProvider, MistralProvider, GroqProvider, Message, ModelCapabilities, ProviderError
 from feedback.errors import Error
@@ -162,7 +162,7 @@ def test_strict_setting_never_bypasses_application_validation(engine_case, failu
 def test_failed_strict_check_never_downgrades_or_releases_draft(engine_case):
     enable_strict(engine_case)
     bodies = wire_case(engine_case, [draft(), 400])
-    assert generate(engine_case)['body'] == UNVERIFIED
+    assert generate(engine_case)['body'] == CHECK_UNAVAILABLE
     assert len(bodies) == 2 and all('response_format' in b for b in bodies)
 
 

@@ -281,13 +281,13 @@ async def _groq_quota_error(response):
         raw.clear()
 
 
-async def _request_json(transport, total_timeout, method, url, headers, body=None, params=None, *, groq_errors=False, extensions=None):
+async def _request_json(transport, total_timeout, method, url, headers, body=None, params=None, *, groq_errors=False, extensions=None, read_timeout=15):
     """One bounded request to an adapter-owned fixed URL; no raw error bodies."""
     encoded = _json_bytes(body, MAX_REQUEST_BYTES) if body is not None else None
     try:
         with anyio.fail_after(total_timeout):
             async with httpx.AsyncClient(transport=transport, trust_env=False, follow_redirects=False,
-                                         timeout=httpx.Timeout(15, connect=5, pool=5),
+                                         timeout=httpx.Timeout(15, connect=5, pool=5, read=min(read_timeout, total_timeout)),
                                          limits=httpx.Limits(max_connections=1, max_keepalive_connections=0)) as client:
                 async with client.stream(method, url, params=params, headers=headers, content=encoded, extensions=extensions) as response:
                     if not 200 <= response.status_code < 300:
@@ -1342,6 +1342,7 @@ def _restore(adapter, key, model, message):
 
 class FixedProvider(KodeKeyProvider):
     base_url = ''
+    response_read_timeout = 15
     native_json_output = False
     native_strict_json_output = False
     plain_text_context = False
@@ -1354,7 +1355,8 @@ class FixedProvider(KodeKeyProvider):
         if self.id == 'anthropic':
             headers.pop('Authorization')
             headers.update({'x-api-key': key, 'anthropic-version': '2023-06-01'})
-        return await _request_json(self._transport, self._total_timeout, method, self.base_url + path, headers, body)
+        return await _request_json(self._transport, self._total_timeout, method, self.base_url + path, headers, body,
+                                   read_timeout=self.response_read_timeout if method == 'POST' else 15)
 
     async def probe_model(self, key, model, *, tools=False):
         caps = ModelCapabilities(text_generation=True)
@@ -1455,6 +1457,9 @@ class OpenAIProvider(FixedProvider):
 class RampRouterProvider(OpenAIProvider):
     id, name = 'ramp', 'Ramp Router'
     base_url = 'https://api.router.com/v1'
+    # Non-streaming routed inference may take longer to send its first byte.
+    # Keep the existing total deadline, including connection and body reads.
+    response_read_timeout = 45
 
     async def list_models(self, key):
         value = await self._request(key, 'GET', '/models')

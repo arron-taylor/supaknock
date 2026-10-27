@@ -26,6 +26,8 @@ MAX_CALL_SECONDS = 60
 MAX_TOOL_CALLS = 8
 UNVERIFIED = ('I couldn’t verify an answer against the approved support material. '
               'Please add more detail or choose human support.')
+CHECK_UNAVAILABLE = ('I couldn’t complete the answer check. '
+                     'Please try again shortly or choose human support.')
 INSUFFICIENT = ('I couldn’t find enough information in the approved support material to answer that. '
                 'Please add more detail or choose human support.')
 _LINK = re.compile(r'(?:[a-z][a-z0-9+.-]*://|\bwww\.|\]\s*\(|<\s*/?\s*[a-z][^>]*>)', re.I)
@@ -559,10 +561,10 @@ class AIGeneration:
             # Failed checking never releases the unchecked draft or rotates its
             # signed continuation to another account. Provider health is recorded
             # by _dispatch; final authority still rechecks before any reply.
-            return fallback
+            return fallback | {'body': CHECK_UNAVAILABLE}
         except Error as error:
             if error.code == 'budget_exhausted':
-                return fallback
+                return fallback | {'body': CHECK_UNAVAILABLE}
             raise
         return fallback
 

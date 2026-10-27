@@ -1,5 +1,6 @@
 """Synthetic wire contracts; no live keys, customer data or billable calls."""
 import json
+import asyncio
 import httpx
 import pytest
 from feedback.ai_providers import provider, ProviderError, Message, ModelCapabilities
@@ -7,6 +8,56 @@ from feedback.ai_endpoints import custom_credentials, endpoint_url
 from test_ai_providers import run, response, completion, call, KEY, SEARCH, CAPABILITIES
 
 NEW = ('openai', 'anthropic', 'openrouter', 'ramp', 'custom')
+
+
+@pytest.mark.parametrize('name,expected', [('ramp', 45), ('openai', 15)])
+def test_inference_read_timeout_keeps_ramp_within_total_deadline(name, expected):
+    seen = []
+    def handler(request):
+        seen.append(request.extensions['timeout'])
+        return response(answer(name))
+    client = provider(name, transport=httpx.MockTransport(handler))
+    run(client.generate(KEY, 'model', (Message('user', 'Hi'),), capabilities=CAPABILITIES))
+    assert seen == [{'connect': 5, 'read': expected, 'write': 15, 'pool': 5}]
+    client = provider(name, transport=httpx.MockTransport(handler), total_timeout=2)
+    run(client.generate(KEY, 'model', (Message('user', 'Hi'),), capabilities=CAPABILITIES))
+    assert seen[-1]['read'] == 2
+
+
+@pytest.mark.parametrize('read_limit,total_limit,succeeds', [(.01, 1, False), (1, 1, True), (1, .01, False)])
+def test_delayed_first_byte_obeys_read_and_total_deadlines(read_limit, total_limit, succeeds):
+    from feedback.ai_providers import _request_json
+    async def scenario():
+        handlers = set()
+        async def handle(reader, writer):
+            task = asyncio.current_task()
+            handlers.add(task)
+            try:
+                await reader.readuntil(b'\r\n\r\n')
+                await asyncio.sleep(.08)
+                writer.write(b'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 11\r\nConnection: close\r\n\r\n{"ok":true}')
+                await writer.drain()
+            finally:
+                writer.close()
+                await writer.wait_closed()
+                handlers.discard(task)
+        server = await asyncio.start_server(handle, '127.0.0.1', 0)
+        try:
+            url = 'http://127.0.0.1:' + str(server.sockets[0].getsockname()[1])
+            async def request():
+                return await _request_json(None, total_limit, 'GET', url, {}, read_timeout=read_limit)
+            if succeeds:
+                assert await request() == {'ok': True}
+            else:
+                with pytest.raises(ProviderError, match='timeout') as caught:
+                    await request()
+                assert caught.value.retryable
+        finally:
+            server.close()
+            await server.wait_closed()
+            if handlers:
+                await asyncio.gather(*handlers)
+    run(scenario())
 
 
 def secret(name):

@@ -91,6 +91,20 @@
 .ai-admin .ai-account-choice .hint { margin:8px 0 0 25px; overflow-wrap:anywhere; }
 .ai-admin .ai-key-choices { max-height:380px; overflow-y:auto; padding-right:8px; margin:12px 0 20px; }
 .ai-admin .ai-account-choice[hidden] { display:none; }
+/* One bounded setup card keeps choices and their result together. */
+.ai-admin .ai-answer-setup { display:grid; gap:14px; }
+.ai-admin .ai-answer-setup > *, .ai-admin .ai-answer-setup .hint,
+.ai-admin .ai-answer-setup h4, .ai-admin .ai-answer-setup .actions { margin:0; }
+.ai-admin .ai-answer-setup h4 { font-size:13px; font-weight:500; }
+.ai-admin .ai-answer-setup .ai-key-choices { margin:8px 0; max-height:240px; }
+.ai-admin .ai-answer-setup .ai-account-choice { display:flex; flex-wrap:wrap; gap:6px 20px; align-items:center; padding:10px 0; }
+.ai-admin .ai-answer-setup .ai-account-choice .check { margin:0; }
+.ai-admin .ai-answer-setup .ai-account-choice .hint { margin:0; }
+.ai-admin .ai-model-choice { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:end; }
+.ai-admin .ai-model-choice > * { margin:0; }
+.ai-admin .ai-setup-status { padding:12px 14px; border:1px solid var(--line); border-radius:8px; background:var(--surface); overflow-wrap:anywhere; }
+.ai-admin .ai-setup-status a { display:inline-block; margin-top:8px; }
+@media(max-width:700px){ .ai-admin .ai-model-choice { grid-template-columns:minmax(0,1fr); } }
 /* Knowledge workspace: compact navigation, focused reading and deliberate review. */
 .ai-admin .ai-workspace-heading { display:flex; justify-content:space-between; align-items:center; gap:24px; margin:4px 0 24px; }
 .ai-admin .ai-workspace-heading h2 { margin:0 0 8px; border:0; padding:0; font-size:24px; }

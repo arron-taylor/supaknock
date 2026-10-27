@@ -193,3 +193,83 @@ test('crawl summaries distinguish skipped URLs from a failed import and explain 
   assert.match(aborted, /could not finish/);
   assert.match(aborted, /Previous knowledge has been kept/);
 });
+
+const setupLibrary={version:4,keys:[
+  {id:'old',provider:'kodekey',purpose:'generation',enabled:true,catalogue:['old-model']},
+  {id:'ramp',provider:'ramp',purpose:'generation',enabled:true,catalogue:['luna','other']},
+  {id:'backup',provider:'ramp',purpose:'both',enabled:true,catalogue:['luna']},
+  {id:'decision',provider:'ramp',purpose:'decision',enabled:true,catalogue:['private-decision']}
+]};
+test('draft models belong only to explicitly selected answer keys of the chosen provider',()=>{
+  assert.deepEqual(plain(context.aiAnswerChoices(setupLibrary,'ramp',[]).models),[]);
+  assert.deepEqual(plain(context.aiAnswerChoices(setupLibrary,'ramp',['old']).models),[]);
+  assert.deepEqual(plain(context.aiAnswerChoices(setupLibrary,'ramp',['ramp','backup']).models),['luna']);
+  assert.equal(context.aiAnswerChoices(setupLibrary,'ramp',['decision']).selected.length,0);
+});
+function setupHarness({conflict=false,failProbe=false,lateChange=false}={}){
+  let config={version:2,settings:{provider:'kodekey',model:'old-model',enabled:true,tools:{search_knowledge:true}}};
+  let pool={version:2,keys:[{id:'old',version:1}]},library=structuredClone(setupLibrary);
+  const initial=structuredClone(config),initialPool=structuredClone(pool),calls=[];
+  const request=async(path,method,body)=>{
+    calls.push({path,method,body:body&&structuredClone(body)});
+    if(path==='/ai/keys')return {...library,version:library.version+(conflict?1:0)};
+    if(path==='/project/ai'&&!method)return {...structuredClone(config),version:config.version+(lateChange&&calls.some(c=>c.path.endsWith('/model/probe'))?1:0)};
+    if(path==='/project/ai'&&method==='PUT'){
+      assert.equal(body.version,config.version);assert.equal(body.settings.enabled,false);
+      if(config.settings.provider!==body.settings.provider){library.version++;pool.keys=[];}
+      config={version:config.version+1,settings:body.settings};pool.version=config.version;return structuredClone(config);
+    }
+    if(path.endsWith('/keys/selection')){
+      assert.equal(body.version,config.version);assert.equal(body.library_version,library.version);
+      config.version++;pool={version:config.version,keys:body.key_ids.map(id=>({id,label:id,version:1,eligible:false}))};return structuredClone(pool);
+    }
+    if(path.endsWith('/model/probe')){
+      assert.equal(body.version,config.version);assert.equal(config.settings.provider,'ramp');assert.equal(config.settings.model,'luna');
+      assert.equal(body.tools,true);assert.equal(body.key_version,1);
+      if(failProbe)throw new Error('Provider timed out');
+      config.version++;pool.version=config.version;pool.keys.find(k=>path.includes('/'+k.id+'/')).eligible=true;return structuredClone(pool);
+    }
+    throw new Error('Unexpected request '+path);
+  };
+  const run=()=>context.aiSaveAnswerSetup(request,'/project/ai',initial,initialPool,setupLibrary,{provider:'ramp',model:'luna',keyIds:['ramp','backup'],tools:true});
+  return {run,calls};
+}
+test('one explicit action saves provider, bindings and exact model before verifying every key',async()=>{
+  const {run,calls}=setupHarness();const result=await run();
+  assert.equal(result.config.settings.enabled,false);
+  assert.equal(result.pool.keys.every(key=>key.eligible),true);
+  assert.deepEqual(calls.filter(c=>c.method).map(c=>c.path),['/project/ai','/project/ai/keys/selection','/project/ai','/project/ai/keys/ramp/model/probe','/project/ai/keys/backup/model/probe']);
+});
+test('library conflicts stop setup before any mutation',async()=>{
+  const {run,calls}=setupHarness({conflict:true});await assert.rejects(run,/changed/);
+  assert.equal(calls.some(c=>c.method),false);
+});
+test('failed verification stops without probing another key or enabling AI',async()=>{
+  const {run,calls}=setupHarness({failProbe:true});await assert.rejects(run,/timed out/);
+  assert.equal(calls.filter(c=>c.path.endsWith('/model/probe')).length,1);
+  assert.equal(calls.some(c=>c.body?.settings?.enabled),false);
+});
+test('a concurrent edit after verification is never reported as setup success',async()=>{
+  await assert.rejects(setupHarness({lateChange:true}).run,/changed during verification/);
+});
+
+test('explicit disconnect clears project selections without deleting account credentials or probing',async()=>{
+  const config={version:1,settings:{provider:'ramp',model:'luna',enabled:true,tools:{}}};
+  const pool={version:1,keys:[{id:'ramp',version:1}]};const paths=[];
+  const request=async(path,method,body)=>{
+    paths.push([path,method]);
+    if(path==='/ai/keys')return setupLibrary;
+    if(path==='/ai'&&!method)return config;
+    if(path==='/ai'&&method==='PUT'){
+      assert.equal(body.settings.enabled,false);assert.equal(body.settings.model,null);
+      config.settings=body.settings;config.version++;return config;
+    }
+    if(path==='/ai/keys/selection'){
+      assert.deepEqual(plain(body.key_ids),[]);config.version++;return {version:config.version,keys:[]};
+    }
+    throw new Error('Unexpected mutation '+path);
+  };
+  const result=await context.aiSaveAnswerSetup(request,'/ai',structuredClone(config),pool,setupLibrary,{provider:'ramp',keyIds:[],model:null,disconnect:true,tools:false});
+  assert.equal(result.pool.keys.length,0);assert.equal(result.config.settings.enabled,false);
+  assert.equal(paths.some(([path,method])=>path.startsWith('/ai/keys/')&&method==='DELETE'),false);
+});

@@ -112,6 +112,8 @@ class FixtureProvider:
             self.name, self.key, self.models = 'Mistral AI', 'preview-mistral-key', ('ministral-14b-2512', 'ministral-14b-latest')
         elif provider_id == 'groq':
             self.name, self.key, self.models = 'Groq', 'preview-groq-key', ('openai/gpt-oss-120b', 'openai/gpt-oss-20b')
+        elif provider_id == 'ramp':
+            self.name, self.key, self.models = 'Ramp Router', 'preview-ramp-key', ('gpt-6-luna', 'gpt-6-sol')
         else:
             raise ProviderError('unsupported_provider')
         self.rate_limited_keys = set()
@@ -293,7 +295,7 @@ def main():
         with patch('feedback.ai_installation.EmbeddingInstallation', FixtureInstallation):
             app = create_app(config)
         storage = app.state.storage
-        fakes = {provider_id: FixtureProvider(provider_id) for provider_id in ('kodekey', 'gemini', 'mistral', 'groq')}
+        fakes = {provider_id: FixtureProvider(provider_id) for provider_id in ('kodekey', 'gemini', 'mistral', 'groq', 'ramp')}
         app.state.ai_settings.provider_factory = lambda provider_id: fakes[provider_id]
         app.state.ai_generation.provider_factory = lambda provider_id: fakes[provider_id]
         app.state.ai_topics.provider_factory = fixture_decision_provider
@@ -368,6 +370,10 @@ def main():
                     catalogue=['gpt-6-luna'], capabilities={'text_generation': True, 'tool_calling': True, 'streaming': False, 'structured_output': False})
                 settings.update(enabled=identifier != 'batches', allow_guest_reports=identifier == 'guest', tools={tool: identifier != 'batches' for tool in settings['tools']})
                 app.state.ai_settings.save(project['id'], principal, saved['version'], settings)
+        if os.environ.get('SB_AI_SETUP_PREVIEW') == '1':
+            for label, secret in [('Ramp main', 'preview-ramp-key'), ('Ramp backup', 'preview-ramp-key-2')]:
+                library = app.state.ai_account_keys.read(principal)
+                app.state.ai_account_keys.add(principal, library['version'], 'ramp', 'generation', label, 'Preview Ramp account', secret)
         app.state.ai_crawl_worker.runner = fixture_crawl
         Path('/tmp/suggestion-box-ai-ui-preview.json').write_text(json.dumps({'base_url': BASE, 'directory': folder, 'projects': projects,
             'admin_email': 'ai-admin@example.test', 'password': PASSWORD, 'provider_key': 'preview-kodekey-key',

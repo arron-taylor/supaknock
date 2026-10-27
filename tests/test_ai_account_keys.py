@@ -352,3 +352,34 @@ def test_successful_text_recheck_preserves_tool_evidence_for_other_projects(ai):
     ai['admin'].post(ai['url']+'/model/probe',json={'version':selected['version'],'tools':True}).raise_for_status()
     ai['admin'].post(ai['url']+'/model/probe',json={'version':selected['version'],'tools':False}).raise_for_status()
     assert ai['admin'].get(ai['url']).json()['capabilities']['tool_calling']
+
+
+def test_answer_setup_can_browse_unbound_models_then_switch_bind_save_and_verify(ai):
+    """The browser's combined action uses existing fenced APIs in this order."""
+    select_model(ai)
+    old_key = library(ai)['keys'][0]['id']
+    ramp = add_account(ai, provider='ramp', secret='fixture-ramp-secret')
+    before = ai['admin'].get(ai['url']).json()
+    lib = library(ai)
+    refreshed = ai['admin'].post('/api/v1/ai/keys/'+ramp['id']+'/models/refresh', json={
+        'version':lib['version'], 'key_version':ramp['version'], 'role':'generation'})
+    assert refreshed.status_code == 200
+    lib = refreshed.json()
+    assert next(k for k in lib['keys'] if k['id']==ramp['id'])['catalogue']
+    assert ai['admin'].get(ai['url']).json() == before  # Browsing never switches providers.
+    current = ai['admin'].put(ai['url'], json={'version':before['version'],
+        'settings':before['settings'] | {'provider':'ramp', 'model':None, 'enabled':False}})
+    assert current.status_code == 200
+    current = current.json()
+    pool = ai['admin'].put(ai['url']+'/keys/selection', json={'version':current['version'],
+        'library_version':lib['version']+1, 'key_ids':[ramp['id']]})
+    assert pool.status_code == 200
+    current = ai['admin'].put(ai['url'], json={'version':pool.json()['version'],
+        'settings':current['settings'] | {'model':'Exact/Model:ID', 'enabled':False}})
+    assert current.status_code == 200
+    verified = ai['admin'].post(ai['url']+'/keys/'+ramp['id']+'/model/probe', json={
+        'version':current.json()['version'], 'key_version':ramp['version'], 'tools':True})
+    assert verified.status_code == 200 and verified.json()['keys'][0]['eligible']
+    assert ai['fake'].calls[-1] == ('probe','fixture-ramp-secret','Exact/Model:ID',True)
+    assert not ai['admin'].get(ai['url']).json()['settings']['enabled']
+    assert any(k['id']==old_key for k in library(ai)['keys'])  # Old credential preserved.

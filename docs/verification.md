@@ -1,3 +1,59 @@
+## Unified answer-provider setup — October 27, 2026
+
+Replaced three separate answer-provider forms with one local draft for provider,
+explicit account-key selections and exact model. Account catalogues can be read
+or refreshed before project bindings change. One Save & verify action performs
+the existing version-checked writes and per-key probes, with progress and errors
+in the same card. Shared keys are not implicitly bound or deleted; changes keep
+AI off until explicit enablement. Interrupted operations stop and require review
+of saved state. A separate disconnect action preserves the account credentials.
+Late tab refreshes cannot overwrite a newly edited draft. Topic-decision setup
+is unchanged. The workflow uses existing APIs and does not change the schema.
+
+Validation: 729 real-SQLite account-key/provider API tests passed; 23 JavaScript
+UI logic tests passed. Browser checks covered a KodeKey-to-Ramp switch, two-key
+verification, model loading before save, failed tool verification and recovery,
+missing-key guidance, local discard/cancel, disconnect/reconnect, direct Settings
+navigation, dark/light themes and 390px layout without horizontal overflow.
+All provider calls in browser tests were simulated. Runtime OpenAPI generated
+with temporary Config/create_app matches docs/openapi.json; diff check passed.
+
+Final local ARM64 image `supaknock:ai-setup-local`, config
+`sha256:13565c973da2fcdf407958be60f1f62b6bca8d324b7fc39b3d83bf94a94c81a0`,
+built successfully and passed the disposable Docker restart, recreation,
+persistence and backup/restoration smoke. Owned test containers/volumes were
+cleaned up. No live credentials, publication or production deployment were used.
+
+## Ramp Router timeout and verification failures — October 27, 2026
+
+Local ARM64 image `supaknock:ramp-timeout-local` built successfully (image
+config `sha256:db6544a6497f271a3f52a64a6986f0418bfbe7fe6f3b932513d7258d11aaee99`).
+The disposable Docker smoke passed HTTP flows, restart/recreation persistence,
+and backup/restoration. Smoke containers and volumes were cleaned up. Local
+browser fixtures were stopped and their tabs closed. No publication/deployment.
+
+Ramp inference POST requests now allow up to 45 seconds for a response read,
+within the existing 45-second total request deadline. Catalogue requests and
+other providers retain their 15-second read limits. Connection/pool limits,
+redirect refusal, response bounds, cancellation and credential fences remain.
+A failed answer-check request or exhausted checking allowance now says the check
+could not complete, rather than suggesting missing support evidence. Actual
+unsupported answers retain the existing evidence fallback; unchecked drafts
+remain private. Cooldowns and bounded retries are unchanged.
+
+Validation: 152 focused provider/evidence/strict-output/chat/progress tests passed,
+plus the added real-SQLite timeout/next-turn-cooldown regression. Real loopback
+HTTP tests cover delayed first bytes, read timeout and the total deadline.
+Browser QA with disposable SQLite and simulated providers verified the new
+message in the customer widget and administrator inbox. Runtime OpenAPI from a
+temporary Config exactly matches the committed schema.
+
+Broader provider/continuation/MCP/key-pool checks: 143 passed, four failed.
+Three continuation tests also fail on a clean HEAD archive (d800105), without
+these changes. The fourth key-pool timing test passed on isolated rerun and on
+clean HEAD. This is focused verification, not a claim of a green full suite.
+No live inference, publication or production deployment was performed.
+
 # Application verification
 
 ## README developer guide — October 21, 2026

@@ -85,6 +85,48 @@ function aiPermissionDraftState(saved, baseline, draft) {
   const original=signature(baseline);
   return {dirty:signature(draft)!==original,conflict:signature(saved)!==original};
 }
+function aiAnswerChoices(library, provider, ids) {
+  const keys=library.keys.filter(key=>key.provider===provider&&['generation','both'].includes(key.purpose));
+  const selected=keys.filter(key=>ids.includes(key.id));
+  // Every selected key must list the exact model we will verify.
+  const models=selected.length?[...new Set(selected[0].catalogue)].filter(model=>selected.every(key=>key.catalogue.includes(model))).sort():[];
+  return {keys,selected,models};
+}
+async function aiSaveAnswerSetup(request, base, initial, pool, library, draft, progress=()=>{}) {
+  const choices=aiAnswerChoices(library,draft.provider,draft.keyIds);
+  const disconnect=draft.disconnect===true&&!draft.keyIds.length&&draft.provider===initial.settings.provider&&draft.model===null;
+  if((!draft.keyIds.length&&!disconnect)||choices.selected.length!==draft.keyIds.length)throw new Error('Choose an account key for this provider.');
+  if(choices.selected.some(key=>!key.enabled))throw new Error('Uncheck paused keys before verifying, or enable them in account settings.');
+  if(!disconnect&&!choices.models.includes(draft.model))throw new Error('Choose a model available to every selected key.');
+  const changedProvider=draft.provider!==initial.settings.provider;
+  const changed=changedProvider||draft.model!==initial.settings.model||JSON.stringify([...draft.keyIds].sort())!==JSON.stringify(pool.keys.map(key=>key.id).sort());
+  progress('Checking saved settings…');
+  const current=await request(base),currentLibrary=await request('/ai/keys');
+  if(current.version!==initial.version||currentLibrary.version!==library.version)throw new Error('Settings or account keys changed. Reload saved setup and review your choices.');
+  let config=initial,libraryVersion=library.version;
+  if(changed){
+    progress('Saving your choices…');
+    config=await request(base,'PUT',{version:config.version,settings:{...config.settings,provider:draft.provider,model:changedProvider?null:draft.model,enabled:false}});
+    // Switching provider detaches bindings and advances the library once.
+    if(changedProvider)libraryVersion++;
+  }
+  pool=await request(base+'/keys/selection','PUT',{version:config.version,library_version:libraryVersion,key_ids:draft.keyIds});
+  // Use only the version returned by our own write, never adopt a concurrent edit.
+  config={...config,version:pool.version};
+  if(config.settings.model!==draft.model){
+    config=await request(base,'PUT',{version:config.version,settings:{...config.settings,model:draft.model,enabled:false}});
+    pool={...pool,version:config.version};
+  }
+  for(const [index,id] of draft.keyIds.entries()){
+    const key=pool.keys.find(key=>key.id===id);
+    progress('Verifying '+key.label+' ('+(index+1)+' of '+draft.keyIds.length+')…');
+    pool=await request(base+'/keys/'+encodeURIComponent(id)+'/model/probe','POST',{version:pool.version,key_version:key.version,tools:draft.tools});
+    if(!pool.keys.find(key=>key.id===id)?.eligible)throw new Error('The model did not pass the required checks. Review its tool support and try again.');
+  }
+  config=await request(base);
+  if(config.version!==pool.version)throw new Error('Settings changed during verification. Reload saved setup to review the result.');
+  return {config,pool};
+}
 // Native administration only. All source/model text is inserted as text nodes.
 window.SuggestionAI = (() => {
   const tools = [
@@ -136,7 +178,7 @@ window.SuggestionAI = (() => {
     )));
   }
   let closeConfirmation=null;
-  function confirmChange(title, message, actionLabel) {
+  function confirmChange(title, message, actionLabel, target=root) {
     closeConfirmation?.(false);
     return new Promise(resolve=> {
       const previous=document.activeElement, id='ai-confirm-'+crypto.randomUUID();
@@ -150,7 +192,7 @@ window.SuggestionAI = (() => {
       closeConfirmation=finish;
       area.append(row(button('Cancel',()=>finish(false)),button(actionLabel,()=>finish(true),'danger')));
       area.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();finish(false);}});
-      root.append(area);area.scrollIntoView({block:'center'});area.focus({preventScroll:true});
+      target.append(area);area.scrollIntoView({block:'center'});area.focus({preventScroll:true});
     });
   }
   function retainButtonFocus(box) {
@@ -747,38 +789,111 @@ window.SuggestionAI = (() => {
       box.append(panel('Recent topic decisions',hint('Private administrator metadata. Message contents and decision keys are excluded.'),button('Refresh decisions',()=>history()),historyList));await history();
     }
     async function answerModels(box){
-      let pool=await api(base+'/keys'),dirty=false,bindingDirty=false,pending=false;
-      const modelBox=el('div'),selection=el('div'),checks=el('div'),checkTools=checkbox('Also verify optional assistant tools','check_tools',Object.values(config.settings.tools).some(Boolean));
+      let pool=await api(base+'/keys'),library=await api('/ai/keys'),baseline=config,dirty=false,pending=false,needsReload=false;
+      const registry=await api('/ai/providers');
+      let draft={provider:config.settings.provider,keyIds:pool.keys.map(key=>key.id),model:config.settings.model||''};
+      const status=el('div',{class:'ai-setup-status',role:'status','aria-live':'polite'});
+      const provider=select('1. Answer provider','provider',registry.map(item=>[item.id,item.name]),draft.provider);
+      const keys=el('div',{class:'ai-key-choices'}),model=select('3. Answer model','model',[],draft.model);
+      const modelHint=hint(''),changeHint=hint('');
+      const checkTools=checkbox('Also verify assistant tools','check_tools',Object.values(config.settings.tools).some(Boolean)||pool.keys.some(key=>key.capabilities.tool_calling)||config.readiness?.issues.includes('answer_tools_unverified'));
+      const submit=el('button',{type:'submit'},'Save & verify');
+      const setStatus=(message,error=false)=>{replace(status,el('p',{class:error?'error':'hint'},message));status.setAttribute('role',error?'alert':'status');};
+      async function acceptResult(result){
+        config=result.config;baseline=config;pool=result.pool;library=await api('/ai/keys');dirty=false;
+        draft={provider:config.settings.provider,keyIds:pool.keys.map(key=>key.id),model:config.settings.model||''};
+        provider.querySelector('select').value=draft.provider;showSummary();drawKeys();drawModels();showSaved();
+      }
+      const disconnect=button('Disconnect answer keys',async()=>{
+        if(pending||dirty||needsReload)return;
+        if(!await confirmChange('Disconnect answer keys?','This turns AI off and removes this project’s answer-key selections. Account credentials remain saved.','Disconnect keys',status))return;
+        await perform(async()=>{
+          await acceptResult(await aiSaveAnswerSetup(api,base,baseline,pool,library,{provider:baseline.settings.provider,keyIds:[],model:null,disconnect:true,tools:false},setStatus));
+          setStatus('Answer keys disconnected. AI is off. Your account credentials remain saved.');
+        });
+      });
+      const refresh=button('Load / refresh available models',async()=>{
+        if(pending)return;
+        const selected=aiAnswerChoices(library,draft.provider,draft.keyIds).selected;
+        if(!selected.length){setStatus('Choose at least one account key first.',true);return;}
+        await perform(async()=>{
+          for(const key of selected){
+            setStatus('Loading models for '+key.label+'…');
+            library=await api('/ai/keys/'+encode(key.id)+'/models/refresh','POST',{version:library.version,key_version:key.version,role:'generation'});
+          }
+          // Catalogue refreshes do not advance project configuration versions.
+          drawModels();setStatus('Available models refreshed. Your project choices have not been saved.');
+        });
+      });
+      const reload=button('Reload saved setup',async()=>{
+        if(pending)return;
+        if(dirty&&!needsReload&&!await confirmChange('Reload saved setup?','This discards your unsaved provider, key and model choices.','Reload setup',status))return;
+        await perform(async()=>{
+          await reloadConfig();baseline=config;pool=await api(base+'/keys');library=await api('/ai/keys');
+          draft={provider:config.settings.provider,keyIds:pool.keys.map(key=>key.id),model:config.settings.model||''};
+          dirty=false;needsReload=false;provider.querySelector('select').value=draft.provider;drawKeys();drawModels();showSaved();
+        });
+      });
+      function controls(){
+        fields.querySelectorAll('button,input,select').forEach(control=>control.disabled=pending);
+        submit.disabled=pending||needsReload||!draft.keyIds.length||!aiAnswerChoices(library,draft.provider,draft.keyIds).models.includes(draft.model);
+        refresh.disabled=pending||needsReload||!draft.keyIds.length;
+        disconnect.disabled=pending||dirty||needsReload||!pool.keys.length;
+        model.querySelector('select').disabled=pending||!aiAnswerChoices(library,draft.provider,draft.keyIds).models.length;
+        fields.setAttribute('aria-busy',String(pending));
+      }
       async function perform(action){
-        if(pending)throw new Error('Wait for the current model operation to finish.');
-        pending=true;box.querySelectorAll('button,input,select').forEach(control=>control.disabled=true);
-        try{return await action();}finally{pending=false;box.querySelectorAll('button,input,select').forEach(control=>control.disabled=false);}
+        pending=true;controls();
+        try{await action();}catch(error){needsReload=true;try{await reloadConfig();}catch{}setStatus(error.message+' Setup stopped; some changes may already be saved. Reload saved setup before retrying.',true);}
+        finally{pending=false;controls();}
       }
-      async function draw(){
-        const observedVersion=config.version;
-        const requireCurrent=()=>{if(config.version!==observedVersion)throw new Error('Project settings changed. Reload answer settings before saving or testing.');};
-        const registry=await api('/ai/providers');
-        const provider=select('Answer provider','provider',registry.map(x=>[x.id,x.name]),config.settings.provider);
-        const model=select('Answer model','model',[['','Choose a model'],...pool.catalogue.map(id=>[id,id])],config.settings.model||'');
-        const fields=form([provider,model,hint('Save a provider, select account keys below, refresh their models, then save and verify your chosen model. Changing provider detaches this project’s keys and turns AI off. Account credentials stay saved.')],'Save answer provider and model',async data=>perform(async()=>{
-          requireCurrent();if(bindingDirty)throw new Error('Save your selected keys before changing the model.');
-          const changed=data.get('provider')!==config.settings.provider;
-          if(changed&&pool.keys.length&&!await confirmChange('Change answer provider?','This detaches this project’s selected keys and turns AI off. Account keys and other projects are unchanged.','Change provider'))return;
-          const write=aiProviderWrite(config,data.get('provider'),data.get('model'));
-          await save({...write.settings,...(config.settings.model!==(data.get('model')||null)?{enabled:false}:{})});dirty=false;pool=await api(base+'/keys');await draw();notify('Answer model saved');
-        }));
-        provider.querySelector('select').addEventListener('change',()=>{model.querySelector('select').value='';model.querySelector('select').disabled=provider.querySelector('select').value!==config.settings.provider;});
-        fields.addEventListener('input',()=>dirty=true);replace(modelBox,fields);
-        await keySelection(selection,config.settings.provider,'generation',pool.keys.map(k=>k.id),async(ids,libraryVersion)=>perform(async()=>{
-          requireCurrent();if(dirty)throw new Error('Save your provider and model before selecting keys.');
-          pool=await api(base+'/keys/selection','PUT',{version:config.version,library_version:libraryVersion,key_ids:ids});bindingDirty=false;await reloadConfig();await draw();notify('Project keys selected');
-        }),()=>bindingDirty=true);
-        replace(checks,...pool.keys.map(key=>el('article',{class:'ai-history'},el('h3',{},key.label),hint(key.eligible?'Answer access verified for '+pool.selected_model:'Answer access needs verification'),hint(key.capabilities.tool_calling?'Optional tools verified':'Optional tools not verified'),row(
-          button('Refresh answer models for '+key.label,async()=>perform(async()=>{requireCurrent();if(dirty||bindingDirty)throw new Error('Save your model and key selections first.');pool=await api(base+'/keys/'+encode(key.id)+'/models/refresh','POST',{version:config.version,key_version:key.version});await reloadConfig();await draw();})),
-          button('Verify answer model for '+key.label,async()=>perform(async()=>{requireCurrent();if(dirty||bindingDirty)throw new Error('Save your model and key selections first.');pool=await api(base+'/keys/'+encode(key.id)+'/model/probe','POST',{version:config.version,key_version:key.version,tools:checkTools.querySelector('input').checked});await reloadConfig();await draw();notify('Selected model verified');}))))));
+      function showSaved(){
+        if(pool.keys.length&&pool.keys.every(key=>key.eligible))setStatus('Saved · '+pool.selected_model+' · verified'+(config.settings.enabled?'. AI is enabled.':'. AI is off. Enable it in Settings when you are ready.'));
+        else setStatus('Choose your provider, account keys and model, then save and verify together.');
+        if(!config.settings.enabled&&pool.keys.length&&pool.keys.every(key=>key.eligible))status.append(link('Open AI settings →','#'+(embedded?'ai-support/':'')+'setup'));
       }
-      replace(box,panel('Answer provider and model',modelBox),panel('Account keys used for answers',selection),panel('Verify the selected answer model',hint('Checks make short synthetic requests and may use provider quota. They never enable a permission.'),checkTools,checks),row(button('Reload answer settings',async()=>{if((dirty||bindingDirty)&&!await confirmChange('Reload answer settings?','Unsaved model and key selections will be discarded.','Reload settings'))return;dirty=false;bindingDirty=false;await reloadConfig();pool=await api(base+'/keys');await draw();})));
-      box._refresh=async()=>{if(dirty||bindingDirty)return;await reloadConfig();pool=await api(base+'/keys');await draw();};await draw();
+      function edited(){dirty=true;setStatus('Unsaved choices — your current setup stays in place until you save.');drawModels();}
+      function drawKeys(){
+        const choices=aiAnswerChoices(library,draft.provider,draft.keyIds);
+        replace(keys,...choices.keys.map(key=>{
+          const choice=checkbox(key.label,'key_ids',draft.keyIds.includes(key.id),key.id);
+          choice.querySelector('input').addEventListener('change',event=>{
+            draft.keyIds=event.target.checked?[...draft.keyIds,key.id]:draft.keyIds.filter(id=>id!==key.id);edited();
+          });
+          return el('div',{class:'ai-account-choice'},choice,hint(key.quota_group+' · '+(key.enabled?key.status.replaceAll('_',' '):'Paused')));
+        }),!choices.keys.length?hint('No answer keys saved for this provider. Add one in account settings, then reload this setup.'):null);
+      }
+      function drawModels(){
+        const choices=aiAnswerChoices(library,draft.provider,draft.keyIds),selectElement=model.querySelector('select');
+        if(!choices.models.includes(draft.model))draft.model='';
+        replace(selectElement,...[['','Choose a model'],...choices.models.map(id=>[id,id])].map(([id,label])=>el('option',{value:id},label)));selectElement.value=draft.model;
+        modelHint.textContent=!draft.keyIds.length?'Select an account key to see its models.':!choices.models.length?'Load the models for your selected keys. If they have no models in common, select different keys.':'Models available to every selected key. You can refresh this list without saving the project.';
+        changeHint.textContent=draft.provider!==baseline.settings.provider?'Saving replaces this project’s answer-key selection and turns AI off. Your account keys remain saved.':'Changing the model or selected keys turns AI off until you enable it again in Settings.';
+        controls();
+      }
+      const fields=el('form',{class:'ai-answer-setup'},provider,el('div',{},el('h4',{},'2. Account keys'),hint('Choose the saved keys this project may use.'),keys,link('Manage account API keys →','/admin/ai/providers')),el('div',{class:'ai-model-choice'},model,refresh),modelHint,checkTools,
+        hint('Verification sends short test requests and may use provider quota. It does not enable AI or grant tool permissions.'),changeHint,row(submit,reload),status,
+        el('details',{},el('summary',{},'Disconnect this project'),hint('Reload saved setup first if you have unsaved choices.'),disconnect));
+      fields.addEventListener('submit',async event=>{
+        event.preventDefault();if(pending||needsReload)return;
+        await perform(async()=>{
+          const result=await aiSaveAnswerSetup(api,base,baseline,pool,library,{...draft,keyIds:[...draft.keyIds],tools:checkTools.querySelector('input').checked},setStatus);
+          await acceptResult(result);
+        });
+      });
+      provider.querySelector('select').addEventListener('change',event=>{
+        draft={provider:event.target.value,keyIds:[],model:''};drawKeys();edited();
+      });
+      model.querySelector('select').addEventListener('change',event=>{draft.model=event.target.value;dirty=true;setStatus('Ready to save and verify your choices.');controls();});
+      checkTools.querySelector('input').addEventListener('change',()=>{dirty=true;});
+      replace(box,panel('Answer setup',hint('Choose everything here, then save and verify in one step.'),fields));drawKeys();drawModels();showSaved();
+      box._refresh=async()=>{
+        if(dirty||pending||needsReload)return;
+        const observed=baseline,nextConfig=await api(base),nextPool=await api(base+'/keys'),nextLibrary=await api('/ai/keys');
+        if(dirty||pending||needsReload||baseline!==observed)return;
+        config=nextConfig;baseline=config;pool=nextPool;library=nextLibrary;showSummary();
+        draft={provider:config.settings.provider,keyIds:pool.keys.map(key=>key.id),model:config.settings.model||''};provider.querySelector('select').value=draft.provider;drawKeys();drawModels();showSaved();
+      };
     }
     async function providers(box){
       const answers=el('section',{class:'ai-provider-group','aria-label':'Answer generation',tabindex:'-1'}),decisions=el('section',{class:'ai-provider-group','aria-label':'Topic decisions',tabindex:'-1'});

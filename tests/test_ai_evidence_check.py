@@ -2,7 +2,7 @@
 import asyncio
 import json
 import pytest
-from feedback.ai_generation import UNVERIFIED, validate_evidence_check
+from feedback.ai_generation import CHECK_UNAVAILABLE, UNVERIFIED, validate_evidence_check
 from feedback.ai_providers import GenerationResult, ProviderError, ToolCall, Usage
 from feedback.errors import Error
 from test_ai_generation import ai_store, engine_case, generate
@@ -98,7 +98,8 @@ def test_rejected_correction_or_abstention_never_releases_draft(engine_case,corr
 def test_check_failure_cannot_send_unchecked_answer(engine_case,bad):
     adapter=install(engine_case,[draft(),bad])
     answer=generate(engine_case)
-    assert answer['body']==UNVERIFIED and not answer['citation_ids']
+    assert answer['body']==CHECK_UNAVAILABLE and not answer['citation_ids']
+    assert answer['status']=='insufficient'
     assert len(adapter.calls)==2
 
 
@@ -110,7 +111,7 @@ def test_check_timeout_cancels_and_falls_back(engine_case,monkeypatch):
         except asyncio.CancelledError:cancelled.append(True);raise
     monkeypatch.setattr(module,'MAX_CALL_SECONDS',.03)
     adapter=install(engine_case,[draft(),slow])
-    assert generate(engine_case)['body']==UNVERIFIED
+    assert generate(engine_case)['body']==CHECK_UNAVAILABLE
     assert cancelled and len(adapter.calls)==2
 
 
@@ -135,7 +136,7 @@ def test_each_extra_call_needs_its_own_budget(engine_case,allowance):
     # each boundary without changing the leased settings snapshot.
     s.ai_reserve_usage=reserve
     adapter=install(engine_case,[draft(),verdict(False),draft(),verdict(True)])
-    assert generate(engine_case)['body']==UNVERIFIED
+    assert generate(engine_case)['body']==CHECK_UNAVAILABLE
     assert len(adapter.calls)==allowance and reservations==list(range(allowance+1))
     assert s.ai_usage(pid,p)['reserved_requests']==allowance
 
@@ -149,6 +150,30 @@ def test_storage_bound_includes_only_three_extra_answer_calls(engine_case):
 from test_ai_chat_isolation import ai_chat, turn, invalidate, FixedEmbeddings, FixtureVault
 from feedback.ai_generation import AIGeneration
 from feedback.ai_retrieval import RetrievalService
+
+
+def test_check_timeout_commits_clear_failure_and_next_turn_waits_for_recovery(ai_chat):
+    from uuid import uuid4
+    from feedback.ai_chat import AIChatWorker
+    from test_ai_chat_isolation import conversation
+    env = ai_chat
+    store = env['store']
+    customer = conversation(env)
+    cid, principal = customer['conversation']['id'], customer['principal']
+    store.chat_send(cid, principal, str(uuid4()), 'How long do returns take?')
+    adapter = Scripted([draft(), ProviderError('timeout', retryable=True)])
+    engine = AIGeneration(store, FixtureVault(), RetrievalService(store, FixedEmbeddings()),
+                          provider_factory=lambda _: adapter)
+    worker = AIChatWorker(store, engine)
+    assert worker.run_once()
+    messages = store.chat_messages(cid, principal, 0, 100)
+    assert messages[-1]['body'] == CHECK_UNAVAILABLE
+    assert not any(m['body'] == 'Use the backup operation.' for m in messages)
+    assert store.chat_conversation(cid, principal)['ai_status'] == 'succeeded'
+    store.chat_send(cid, principal, str(uuid4()), 'Try again')
+    assert not worker.run_once()
+    assert store.chat_conversation(cid, principal)['ai_status'] == 'queued'
+    assert len(adapter.calls) == 2  # Cooldown prevents immediate redispatch.
 
 
 @pytest.mark.parametrize('reason',['off_on','mode_cycle','admin_reply','session_expire','origin_removed','source_cycle'])
