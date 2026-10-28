@@ -9,8 +9,8 @@
 .ai-overview .hint { margin:10px 0 0; }
 .ai-status-line,.ai-capabilities { display:flex; gap:10px 16px; flex-wrap:wrap; align-items:center; margin-bottom:12px; font-size:12px; }
 .ai-status-line h3 { margin:0; flex:1; }
-.ai-admin fieldset { min-width:0; border:1px solid var(--line); border-radius:6px; padding:18px; margin:18px 0; }
-.ai-admin legend { color:var(--muted); padding:0 7px; font-size:12px; }
+.ai-admin fieldset { min-width:0; border:0; border-top:1px solid var(--line); padding:20px 0 0; margin:24px 0; }
+.ai-admin legend { color:var(--muted); padding:0 10px 0 0; font-size:13px; }
 .ai-toggle { margin-bottom:20px; }
 .ai-toggle:last-child { margin-bottom:0; }
 .ai-toggle .hint { margin:0 0 0 25px; }
@@ -39,7 +39,7 @@
   .ai-admin .ai-columns { grid-template-columns:1fr; }
   .ai-admin .ai-top-links { flex-direction:column; }
   .ai-admin .panel { padding:17px; }
-  .ai-admin fieldset { padding:12px; }
+  .ai-admin fieldset { padding:18px 0 0; }
   .ai-admin .actions > button { min-height:40px; }
   .ai-admin .ai-facts { gap:10px; }
   .ai-admin .ai-source-card .actions { width:100%; }
@@ -64,17 +64,21 @@
 }
 
 /* Embedded project AI navigation and consistently separated action groups. */
-.settings-view > .ai-project-settings { max-width:1120px; padding:0; border:0; background:none; box-shadow:none; }
+.settings-view > .ai-project-settings { max-width:880px; padding:0; border:0; background:none; box-shadow:none; }
 .ai-project-settings > h2 { display:none; }
-.ai-project-settings .ai-tabs { gap:20px; margin:24px 0 20px; }
+.ai-project-settings .ai-tabs { gap:4px; margin:20px 0 8px; padding:5px; border:0; border-radius:14px; background:var(--raised); }
+.ai-project-settings .ai-tabs > button { padding:9px 13px; border:0; border-radius:10px; font-size:13px; }
+.ai-project-settings .ai-tabs > button[aria-selected=true] { background:var(--surface); color:var(--ink); box-shadow:0 1px 4px #0000000d; }
+.ai-project-settings .ai-tabs > button:focus-visible { outline-offset:-2px; }
 .ai-admin .actions { gap:12px; margin:16px 0; }
 .ai-admin .panel > button { margin-bottom:18px; }
 .ai-admin .panel > .actions { margin:16px 0 20px; }
 .ai-admin .panel form + *, .ai-admin .panel .empty + *, .ai-admin .ai-section form + * { margin-top:20px; }
 .ai-admin .error:empty { display:none; }
 .ai-admin .ai-top-links { gap:16px; flex-wrap:wrap; padding-bottom:4px; }
-.ai-admin .ai-provider-intro { margin:0 0 24px; }
-.ai-admin .ai-provider-group { scroll-margin-top:80px; padding:20px; border:1px solid var(--line); border-radius:10px; margin-bottom:28px; }
+.ai-admin .ai-provider-intro { margin:0 0 20px; }
+.ai-admin .ai-provider-intro .actions { margin:12px 0 0; }
+.ai-admin .ai-provider-group { scroll-margin-top:80px; padding:0; margin-bottom:28px; }
 .ai-admin .ai-provider-group > .panel { margin-bottom:20px; }
 .ai-admin .ai-provider-group > :last-child { margin-bottom:0; }
 .ai-admin .ai-steps { padding-left:22px; margin:0 0 24px; color:var(--muted); }
@@ -82,8 +86,7 @@
 .ai-admin .ai-decision-editor { margin-top:24px; border-top:1px solid var(--line); padding-top:24px; }
 .ai-admin .card + form { margin-top:24px; }
 @media(max-width:700px){
-  .ai-admin .ai-provider-group { padding:12px; }
-  .ai-admin .ai-tabs { gap:18px; }
+  .ai-admin .ai-provider-group { padding:0; }
   .ai-admin .ai-top-links > .button { width:100%; text-align:center; }
   .ai-admin .actions { gap:10px; }
 }
@@ -95,7 +98,7 @@
 .ai-admin .ai-answer-setup { display:grid; gap:14px; }
 .ai-admin .ai-answer-setup > *, .ai-admin .ai-answer-setup .hint,
 .ai-admin .ai-answer-setup h4, .ai-admin .ai-answer-setup .actions { margin:0; }
-.ai-admin .ai-answer-setup h4 { font-size:13px; font-weight:500; }
+.ai-admin .ai-answer-setup h4 { font-size:14px; font-weight:500; }
 .ai-admin .ai-answer-setup .ai-key-choices { margin:8px 0; max-height:240px; }
 .ai-admin .ai-answer-setup .ai-account-choice { display:flex; flex-wrap:wrap; gap:6px 20px; align-items:center; padding:10px 0; }
 .ai-admin .ai-answer-setup .ai-account-choice .check { margin:0; }
@@ -124,7 +127,7 @@
 .ai-admin .ai-disclosure { border:1px solid var(--line); border-radius:12px; background:var(--raised); padding:20px 24px; margin:16px 0; }
 .ai-admin .ai-disclosure > summary { cursor:pointer; font-size:14px; font-weight:600; }
 .ai-admin .ai-disclosure[open] > summary { margin-bottom:24px; }
-.ai-admin .ai-readiness { border:1px solid var(--line); border-left:3px solid var(--green); border-radius:10px; padding:20px; margin-bottom:24px; background:var(--raised); }
+.ai-admin .ai-readiness { border-radius:12px; padding:16px 18px; margin-bottom:24px; background:var(--raised); }
 .ai-admin .ai-readiness ul { margin:12px 0; padding-left:20px; line-height:1.8; }
 .ai-admin .ai-readiness .hint:last-child { margin-bottom:0; }
 .ai-admin .ai-evidence { background:var(--raised); border:1px solid var(--line); border-radius:12px; padding:20px; margin:24px 0; }
@@ -144,14 +147,6 @@
  .ai-admin .ai-segments { width:100%; }
  .ai-admin .ai-segments button { min-width:0; flex:1; }
 }
-/* Keep actual work above the fold inside project settings. */
-#app:has(> .settings-view:not([hidden]) > .ai-project-settings) > .hero { margin-bottom:18px; }
-#app:has(> .settings-view:not([hidden]) > .ai-project-settings) > .hero .eyebrow { display:none; }
-#app:has(> .settings-view:not([hidden]) > .ai-project-settings) > .hero h1 { margin-bottom:4px; }
-#app:has(> .settings-view:not([hidden]) > .ai-project-settings) > .hero p:last-child { margin-bottom:0; }
-#app:has(> .settings-view:not([hidden]) > .ai-project-settings) > .crumb { margin-bottom:14px; }
-#app:has(> .settings-view:not([hidden]) > .ai-project-settings) > .settings-tabs { margin-bottom:18px; }
-.ai-project-settings .ai-tabs { margin:16px 0 10px; }
 .ai-admin .ai-overview .hint { margin-top:5px; }
 .ai-admin .ai-search-form { display:flex; gap:12px; align-items:flex-end; margin-bottom:22px; }
 .ai-admin .ai-search-form > label { flex:1; margin:0; }
@@ -166,8 +161,7 @@
 /* Quiet structure for dense administration; selection and status carry the color. */
 .ai-admin .ai-tabs { scrollbar-width:thin; scroll-padding-inline:12px; }
 .ai-admin .ai-tabs > button { flex-shrink:0; white-space:nowrap; }
-.ai-admin .ai-provider-group { background:var(--surface); border-radius:14px; }
-.ai-admin .ai-provider-group > .panel { background:var(--bg); box-shadow:none; }
+
 .ai-admin .ai-library-row { background:var(--surface); transition:border-color .18s ease,background .18s ease; }
 .ai-admin .ai-library-row:hover { border-color:var(--line-strong); }
 .ai-admin .ai-library-row:focus-within { border-color:var(--green); }

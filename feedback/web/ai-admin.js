@@ -389,7 +389,7 @@ window.SuggestionAI = (() => {
     }
     search.querySelector('input').addEventListener('input',()=>{page=0;draw();});providerFilter.querySelector('select').addEventListener('change',()=>{page=0;draw();});
     replace(root,link('← Administration','/admin','crumb'),hero('Account settings','AI providers','Save provider credentials once, then choose keys and models for each project.'),
-      panel('Provider API keys',summary,row(button('Add provider key',()=>edit(null)),button('Reload account keys',async()=>{if(opened&&!await confirmChange('Reload account keys?','Unsaved key edits will be discarded.','Reload keys'))return;close();await reload();})),el('div',{class:'ai-columns'},search,providerFilter),list,row(previous,pageInfo,next),editor));draw();
+      panel('Provider API keys',summary,row(button('Add provider key',()=>edit(null),''),button('Reload account keys',async()=>{if(opened&&!await confirmChange('Reload account keys?','Unsaved key edits will be discarded.','Reload keys'))return;close();await reload();},'quiet-button')),el('div',{class:'ai-columns'},search,providerFilter),list,row(previous,pageInfo,next),editor));draw();
   }
   async function keySelection(box,provider,role,selected,onSave,onDirty=()=>{}) {
     const library=await api('/ai/keys');
@@ -466,7 +466,7 @@ window.SuggestionAI = (() => {
           const missing=(config.readiness?.issues||[]).filter(i=>i!=='answer_tools_unverified');
           if(wanted&&!toolReady)missing.push('answer_tools_unverified');
           const labels={answer_key_missing:'Choose an account API key.',answer_model_missing:'Choose an answer model.',answer_model_unavailable:'Refresh available models.',answer_model_unverified:'Check answer-model access.',answer_tools_unverified:'Check model access for the optional tools you selected.',embedding_model_not_ready:'Install the local model or configure external embeddings in AI runtime.',knowledge_not_ready:'Approve and index at least one knowledge source.'};
-          replace(readiness,el('strong',{},missing.length?'Before you enable AI':'Ready to enable AI'),missing.length?el('ul',{},missing.map(i=>el('li',{},labels[i]||i))):hint('Model access, local search and approved knowledge are ready.'),hint('Saved status: '+(config.settings.enabled?'On':'Off')+'. Your choices below apply only after saving.'));
+          replace(readiness,el('strong',{},missing.length?(config.settings.enabled?'Review AI readiness':'Before you enable AI'):(config.settings.enabled?'AI support is on':'Ready to enable AI')),missing.length?el('ul',{},missing.map(i=>el('li',{},labels[i]||i))):hint('Model access and approved sources are ready.'),hint((missing.length?'Saved AI is '+(config.settings.enabled?'on.':'off.')+' ':'')+'Changes below apply only after saving.'));
           verify.disabled=operationPending;
           notice.textContent=state.conflict?'Saved permissions changed. Your unsaved choices are kept; reload them before saving. Saved AI is currently '+(config.settings.enabled?'on.':'off.'):state.dirty?'Your unsaved permission choices are kept. Save them when you are ready.':'';
           for(const input of fields.querySelectorAll('input'))input.disabled=operationPending;
@@ -500,7 +500,7 @@ window.SuggestionAI = (() => {
       box._refresh=async()=>{if(hasDraft())return;const nextConfig=await api(base),nextPool=await api(base+'/keys');if(hasDraft())return;config=nextConfig;pool=nextPool;showSummary();permissionForm();limitsForm();await destinationForm();};
       permissionForm();limitsForm();await destinationForm();
       const reloadSettings=row(button('Reload saved settings',async()=>{if(operationPending)throw new Error('Wait for the current key operation to finish.');setOperation(true);try{if(!await confirmChange('Reload saved settings?', 'Unsaved edits in this section will be discarded.', 'Reload settings'))return;await reloadConfig();await setup(box,mode);}finally{setOperation(false);}}));
-      replace(box,hint('Choose account keys and models in Models & keys, approve sources in Knowledge, then choose the assistant’s permissions here.'),panel('Permissions',permissionsBox),el('details',{class:'ai-disclosure'},el('summary',{},'Feedback destinations'),destinationsBox),el('details',{class:'ai-disclosure'},el('summary',{},'Usage & limits'),limitsBox,usageBox),reloadSettings);await usage();
+      replace(box,hint('Choose what your assistant can do. Manage its model and sources in the tabs above.'),panel('Permissions',permissionsBox),el('details',{class:'ai-disclosure'},el('summary',{},'Feedback destinations'),destinationsBox),el('details',{class:'ai-disclosure'},el('summary',{},'Usage & limits'),limitsBox,usageBox),reloadSettings);await usage();
     }
     function markdownForm(onImported, source=null, initial='') {
       const name=field('Source name','name','text',source?.name||'',{required:true,maxlength:300});
@@ -898,12 +898,12 @@ window.SuggestionAI = (() => {
     async function providers(box){
       const answers=el('section',{class:'ai-provider-group','aria-label':'Answer generation',tabindex:'-1'}),decisions=el('section',{class:'ai-provider-group','aria-label':'Topic decisions',tabindex:'-1'});
       const jump=section=>{section.scrollIntoView({block:'start'});section.focus({preventScroll:true});};
-      replace(box,el('div',{class:'ai-provider-intro'},el('h3',{},'Models & keys'),hint('Choose account keys and a model for each role. Manage credentials in account AI providers; all permissions stay project-specific.'),link('Manage account API keys →','/admin/ai/providers','button secondary'),row(button('Answer provider & keys',()=>jump(answers)),button('Decision provider & keys',()=>jump(decisions)))),answers,decisions);
+      replace(box,el('div',{class:'ai-provider-intro'},hint('Choose how your assistant answers and checks topics. Each project keeps its own selections.'),row(link('Manage account API keys →','/admin/ai/providers','button quiet-button'),button('Topic-decision setup ↓',()=>jump(decisions),'quiet-button'))),answers,decisions);
       await reloadConfig();await answerModels(answers);await topics(decisions,'providers');
       box._refresh=async()=>{await answers._refresh?.();await decisions._refresh?.();};
     }
     showSummary();replace(target,...(embedded?[]:[link('← '+p.name+' settings','/admin/projects/'+encode(p.id),'crumb'),hero('Project AI support',p.name,'Connect your model, review its knowledge, and decide exactly what the assistant may do.')]),
-      el('div',{class:'ai-top-links'},summary,link('Embedding settings →','/admin/ai','button secondary')),
+      el('div',{class:'ai-top-links'},summary,link('Embedding settings →','/admin/ai','button quiet-button')),
       ...tabs([['setup','Settings',box=>setup(box)],['providers','Models & keys',providers],['tools','Connected tools',box=>projectTools(box,p.id)],['topics','Allowed topics',topics],['knowledge','Knowledge',knowledge],['personality','Personality',personality],['preview','Preview',preview]],embedded?'ai-support/':''));
   }
   function projectPanel(p){

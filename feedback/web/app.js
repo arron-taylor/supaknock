@@ -1339,7 +1339,7 @@ async function adminProject(ref) {
   }
   root.replaceChildren(
     link("← Administration", "/admin", "crumb"),
-    hero("Project settings", p.name, p.description),
+    hero("Project settings", p.name, "Manage your project’s feedback, website chat, and integrations."),
     secretArea,
     panel(
       "Project details",
@@ -1352,7 +1352,7 @@ async function adminProject(ref) {
         p.name = result.name;
         p.description = result.description;
         w.version = result.version;
-        root.querySelector(".hero")?.replaceWith(hero("Project settings",p.name,p.description));
+        root.querySelector(".hero")?.replaceWith(hero("Project settings",p.name,"Manage your project’s feedback, website chat, and integrations."));
         notify("Project updated");
       }),
       el("div",{class:"archive-section"},el("h3",{},"Archive project"),el("p",{class:"hint"},"Hide this project and pause new activity while keeping its boards, conversations and settings. You can restore it later."),el("div",{class:"actions"},archiveControl("project",p,()=>adminProject(ref)))),

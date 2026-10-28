@@ -1,3 +1,9 @@
+## App visual polish — October 27, 2026
+
+Shared controls and labels are more readable, cards and inputs use softer corners, settings share an 880 px reading width, and AI settings have distinct secondary tabs and fewer nested borders. Project headers stay consistent between tabs. AI readiness copy reflects the saved enabled state and retains unsaved-change notices. Provider-library actions have a clearer primary/secondary hierarchy. No API, permission, credential, storage or widget behavior changes.
+
+Verified 34 existing JavaScript checks, 13 real SQLite integration tests, JavaScript syntax and whitespace checks. Runtime OpenAPI matches all 152 documented paths. Browser inspection covered light/dark desktop settings and shared pages, 390/320 px answer setup without page overflow, keyboard project-tab navigation, unsaved permission state, provider-library actions, inbox empty state, and participant project/board/form pages including dark 390 px. A local ARM64 image matches all 129 runtime files and passed the full disposable Docker restart/recreation and backup/restoration smoke. External providers were simulated in browser fixtures; no live provider checks were needed.
+
 ## Embedded chat design release — October 27, 2026
 
 Published commits `8c73f82` and `95fa533` and deployed the updated widget.
