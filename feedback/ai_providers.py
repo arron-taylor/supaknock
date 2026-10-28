@@ -1464,6 +1464,15 @@ class RampRouterProvider(OpenAIProvider):
     # Keep the existing total deadline, including connection and body reads.
     response_read_timeout = 45
 
+    async def _request(self, key, method, path, body=None):
+        if method == 'POST' and path == '/responses':
+            # Interactive support should not enter Router's automatic discounted
+            # Flex queue. Keep the exact selected model, reasoning and evidence
+            # checks; use standard processing rather than a premium speed tier.
+            # Router preserves any service tier explicitly pinned in a model ID.
+            body = dict(body, allow_flex_tier=False)
+        return await super()._request(key, method, path, body)
+
     async def list_models(self, key):
         value = await self._request(key, 'GET', '/models')
         if not isinstance(value, dict) or not isinstance(value.get('data'), list) or len(value['data']) > MAX_MODELS:

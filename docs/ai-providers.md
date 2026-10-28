@@ -11,6 +11,13 @@ endpoints. Catalogue membership is not capability verification. Topic decisions
 are configured separately. Provider changes invalidate incompatible selections
 and work; there is no automatic provider fallback.
 
+Ramp Router requests disable automatic Flex routing so interactive answers do
+not enter the discounted, less predictable Flex queue. This keeps the selected
+model, its reasoning settings and the independent evidence check unchanged.
+Standard processing can cost more than Flex; SupaKnock does not request a premium
+priority tier. A service tier explicitly pinned in a Router model ID remains
+the administrator's choice. See [Router service-tier routing](https://docs.router.com/strategies/cost-efficient-routing).
+
 Custom endpoints use public HTTPS, validated pinned DNS and no redirects by
 default. Private or HTTP endpoints require `ALLOW_INTERNAL_AI_ENDPOINTS=true`;
 metadata endpoints remain blocked. Keep provider keys server-side.

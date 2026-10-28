@@ -90,6 +90,14 @@ def test_text_and_tool_roundtrip_on_each_protocol(name, final_tools):
     if name in ('openai', 'ramp'):
         assert seen[0].url.path == '/v1/responses' and body['store'] is False
         assert body['input'][-1]['call_id'] == 'call-1'
+        for request in seen:
+            payload = json.loads(request.content)
+            if name == 'ramp':
+                assert payload['allow_flex_tier'] is False
+            else:
+                assert 'allow_flex_tier' not in payload
+            assert payload['model'] == 'model'
+            assert 'reasoning' not in payload and 'service_tier' not in payload
     elif name == 'anthropic':
         assert seen[0].url.path == '/v1/messages'
         assert seen[0].headers['x-api-key'] == KEY and seen[0].headers['anthropic-version'] == '2023-06-01'
