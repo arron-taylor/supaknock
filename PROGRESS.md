@@ -1,3 +1,25 @@
+## Embedded chat design release — October 27, 2026
+
+Published commits `8c73f82` and `95fa533` and deployed the updated widget.
+Docker Hub `taylorarronj/supaknock:latest` and `2026.10.27-chat-design.2`
+resolve to the AMD64/ARM64 index
+`sha256:12e572482248cd8a0911262df6c8c6234770325a304bfba60aeb83df4183521b`.
+
+The final packaged ARM64 image passed the full disposable Docker smoke,
+including restart/recreation and backup restoration. The AMD64 production
+update passed an isolated backup/restore rehearsal. All 129 running source
+files match the checkout, and the public widget bytes and readiness checks
+passed. Existing records, volume, environment, effective secrets, AI settings,
+key bindings, relay configuration and Compose were preserved; other containers
+were unchanged.
+
+Live browser verification on an embedding website caught its custom 570px
+height constraint. The initial composer now stays hidden until the explicit
+AI/person choice, keeping the choice and provider disclosure fully visible.
+The final live check verified that clearance and the subsequent composer reveal.
+Only an empty support session was opened; no production AI question was sent.
+Local browser and focused test evidence is recorded below.
+
 ## Embedded chat visual refinement — October 27, 2026
 
 The widget now has a spacious branded welcome, a quiet header, larger message
