@@ -13,23 +13,25 @@ from fastapi.testclient import TestClient
 from fastapi.responses import HTMLResponse
 from test_ai_mcp_generation import PodcastClient,catalog
 import uvicorn
+PORT=int(os.environ.get('SUPAKNOCK_PREVIEW_PORT','8767'))
+BASE=f'http://localhost:{PORT}'
 folder=tempfile.TemporaryDirectory(prefix='mcp-preview-')
-app=create_app(Config(Path(folder.name)/'preview.sqlite',Fernet.generate_key().decode(),'mcp-preview-setup-token-for-tests',base_url='http://localhost:8767',worker=False))
+app=create_app(Config(Path(folder.name)/'preview.sqlite',Fernet.generate_key().decode(),'mcp-preview-setup-token-for-tests',base_url=BASE,worker=False))
 @app.middleware('http')
 async def preview_policy(request,call_next):
     response=await call_next(request)
     if request.url.path=='/mcp-preview':
         response.headers['Content-Security-Policy']="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
     return response
-client=TestClient(app,base_url='http://localhost:8767')
+client=TestClient(app,base_url=BASE)
 login=client.post('/api/v1/setup',json={'email':'admin@example.com','password':'local-simulator-password','setup_token':'mcp-preview-setup-token-for-tests','display_name':'Alex'}).json()
-client.headers.update({'Origin':'http://localhost:8767','X-CSRF-Token':login['csrf_token']})
+client.headers.update({'Origin':BASE,'X-CSRF-Token':login['csrf_token']})
 p=client.post('/api/v1/projects',json={'identifier':'podcasts','name':'Audiology'}).json()
 client.post('/api/v1/projects/'+p['id']+'/boards',json={'identifier':'ideas','name':'Feature requests'})
 app.state.ai_mcp_admin.client_factory=PodcastClient
 saved=client.post('/api/v1/ai/tool-connections',json={'version':0,'label':'Audiology public transcripts','url':'https://podcasts.example/mcp','enabled':True,'link_origins':['https://podcasts.example']}).json()
 client.post('/api/v1/ai/tool-connections/'+saved['id']+'/discover',json={'version':1})
-client.put('/api/v1/admin/chat/projects/'+p['id'],json={'enabled':True,'origins':['http://localhost:8767'],'version':0})
+client.put('/api/v1/admin/chat/projects/'+p['id'],json={'enabled':True,'origins':[BASE],'version':0})
 # Synthetic providers only; no external inference, credentials or MCP requests.
 from feedback.ai_domain import default_ai_settings
 from feedback.ai_providers import GenerationResult,ToolCall,Usage
@@ -58,8 +60,8 @@ class PreviewPodcastClient(PodcastClient):
 app.state.ai_mcp_tools.client_factory=PreviewPodcastClient
 app.state.ai_chat_worker.start()
 @app.get('/mcp-preview',response_class=HTMLResponse)
-def preview(mobile:bool=False):
+def preview(mobile:bool=False, dark:bool=False):
     if mobile:return '<!doctype html><html><body style="background:#dededb;display:grid;place-items:center;margin:20px"><iframe title="390px episode preview" src="/mcp-preview" style="width:390px;height:844px;border:0;border-radius:18px"></iframe></body></html>'
-    return '''<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font:18px system-ui;background:#f5f3ef;padding:8vw"><h1>Audiology</h1><h2>Small habits, lasting change</h2><p>An episode about making room for a daily walk.</p><p id="player">Player paused at 0:00</p><button onclick="chat.open({intent:'episode'})">Ask about this episode</button><div id="chat"></div><script src="/widget.js"></script><script>const chat=SupaKnockChat.mount('#chat',{server:location.origin,project:'PROJECT_ID',context:{version:1,resource:{kind:'podcast_episode',id:'alias'}},presentation:'bar',onSourceActivate(source){if(source.episodeId!=='canonical'||source.seconds!==42)return false;document.getElementById('player').textContent='Player paused at 0:42';return true;}});</script></body></html>'''.replace('PROJECT_ID',p['id'])
+    return '''<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="font:18px system-ui;background:#f5f3ef;padding:8vw"><h1>Audiology</h1><h2>Small habits, lasting change</h2><p>An episode about making room for a daily walk.</p><p id="player">Player paused at 0:00</p><button onclick="chat.open({intent:'episode'})">Ask about this episode</button><div id="chat"></div><script src="/widget.js"></script><script>const chat=SupaKnockChat.mount('#chat',{server:location.origin,project:'PROJECT_ID',context:{version:1,resource:{kind:'podcast_episode',id:'alias'}},presentation:'bar',theme:{mode:'THEME_MODE'},onSourceActivate(source){if(source.episodeId!=='canonical'||source.seconds!==42)return false;document.getElementById('player').textContent='Player paused at 0:42';return true;}});</script></body></html>'''.replace('PROJECT_ID',p['id']).replace('THEME_MODE','dark' if dark else 'light')
 print('Project '+p['id'],flush=True)
-uvicorn.run(app,host='127.0.0.1',port=8767,log_level='warning')
+uvicorn.run(app,host='127.0.0.1',port=PORT,log_level='warning')

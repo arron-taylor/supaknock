@@ -1,3 +1,22 @@
+## Embedded chat visual refinement — October 27, 2026
+
+The widget now has a spacious branded welcome, a quiet header, larger message
+text and a rounded multiline composer with a circular send control. The initial
+AI/person choice sits in the welcome; it returns above the conversation after
+selection. Existing site colors, light/dark themes, bubble/bar/inline embeds,
+episode context, citations, support handoff and chat identity remain intact.
+No API, database or authentication changes.
+
+Validation: nine JavaScript checks and 13 real-SQLite chat/recovery checks passed.
+Browser checks covered desktop, 390px mobile, a compact 320px viewport, dark mode,
+AI choice and progress, cited replies, expanded sources, multiline drafts,
+human handoff, end-chat confirmation and fresh welcome, Enter-to-send, and
+conversation recovery in an inline embed. No horizontal widget overflow was
+observed at 390px. The final local ARM64 image passed the full disposable Docker
+restart, recreation, persistence and backup/restoration smoke. AI/MCP responses
+were simulated; no live provider calls were made. Publication and rollout evidence
+will be recorded separately.
+
 ## AI setup release published and deployed — October 27, 2026
 
 Published application commit `7df64b4`, including the unified answer setup,

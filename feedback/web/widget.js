@@ -106,7 +106,7 @@ form{margin:0 12px 10px;border:1px solid var(--sb-border);border-radius:12px;pad
 .launcher-arrow{display:none;margin-left:auto;font-size:20px;line-height:1;font-weight:400}
 :host([data-sb-presentation="bar"]) .launcher,:host([data-sb-presentation="inline"]) .launcher{width:440px;max-width:calc(100vw - 32px);padding:15px 18px;gap:12px;background:var(--sb-background);color:var(--sb-text);border:1px solid var(--sb-border);border-radius:18px;font-size:14px;min-height:58px}
 :host([data-sb-presentation="bar"]) .launcher,:host([data-sb-presentation="bar"]) .panel{left:0;right:0;margin-inline:auto;bottom:max(16px,env(safe-area-inset-bottom));transform-origin:bottom center}
-:host([data-sb-presentation="bar"]) .panel{height:min(640px,calc(100dvh - max(32px,calc(env(safe-area-inset-bottom) + 16px))))}
+:host([data-sb-presentation="bar"]) .panel{height:min(720px,calc(100dvh - max(32px,calc(env(safe-area-inset-bottom) + 16px))))}
 :host([data-sb-presentation="bar"]) .launcher .icon,:host([data-sb-presentation="inline"]) .launcher .icon{color:var(--sb-accent);width:22px;height:22px}
 :host([data-sb-presentation="bar"]) .launcher-arrow,:host([data-sb-presentation="inline"]) .launcher-arrow{display:block;color:var(--sb-accent)}
 /* A field-like launcher: one accessible button, not a second composer. */
@@ -155,7 +155,28 @@ button[aria-busy="true"]::after{content:'';display:inline-block;width:11px;heigh
 .ai-progress-row{margin:0 22px 18px 0;animation:sb-message-in .22s ease-out}.ai-progress-row .ai-progress{margin:0;max-width:none;padding:13px 14px;animation:none}.ai-progress-label{display:grid;min-width:0;flex:1;overflow:hidden;isolation:isolate}.ai-progress-label>span{grid-area:1/1;min-width:0;align-self:center}.ai-progress-size{visibility:hidden;pointer-events:none}.stage-current{position:relative}.stage-entering{animation:sb-stage-in .32s cubic-bezier(.22,1,.36,1) both}.stage-leaving{pointer-events:none;animation:sb-stage-out .22s ease-in both}
 @keyframes sb-stage-in{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}@keyframes sb-stage-out{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-5px)}}
 @media(prefers-reduced-motion:reduce){.message.is-new,.ai-progress-row,.stage-entering,.stage-leaving{animation:none}.stage-leaving{display:none}}
-</style><button class="launcher" aria-expanded="false" aria-controls="chat-panel"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2V11.5A8.5 8.5 0 0 1 10.5 3h2A8.5 8.5 0 0 1 21 11.5ZM7 10h9M7 14h5"/></svg><span class="launcher-label">Chat with us</span><span class="launcher-arrow" aria-hidden="true">↗</span><span class="launcher-send" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></span></button><section class="panel" id="chat-panel" aria-label="Support chat" aria-hidden="true" inert hidden><header><div class="brand-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><path d="M5 4h14v13H9l-4 4V4ZM9 8h6M9 12h4"/></svg></div><div class="brand-copy"><h2>Chat with us</h2><small class="response"></small></div><button class="options-toggle" aria-label="Chat options" aria-expanded="false" aria-controls="chat-options">⋯</button><button class="close" aria-label="Close chat">×</button></header><section id="chat-options" class="chat-options" hidden><strong>About this chat</strong><p class="help">AI answers can be mistaken. In AI mode, messages are processed by the configured AI provider. Relevant question details may also be sent to connected services to retrieve answers. Check the sources when you need to verify an answer.</p><button class="reset secondary">End this chat</button><p class="help">Clears access from this browser. Submitted reports are kept.</p></section><div class="mode" aria-live="polite"></div><div id="conversation-view" class="log" role="log" aria-live="polite" aria-label="Conversation messages"><div class="empty"><div class="empty-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2V11.5A8.5 8.5 0 0 1 10.5 3h2A8.5 8.5 0 0 1 21 11.5ZM7 10h9M7 14h5"/></svg></div><strong>A conversation starts here.</strong><p>Ask a question or share what’s on your mind. We’ll reply right here.</p></div></div><div class="status" role="status">Send a message to start a conversation.</div><form class="composer"><label class="sr" for="message">Your message</label><textarea id="message" rows="1" maxlength="4000" placeholder="Write your message…" required></textarea><button type="submit" aria-label="Send message" title="Send message"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button></form></section>`;
+
+/* Embedded support: generous type, a calm welcome and a floating writing surface. */
+.panel{width:min(440px,calc(100vw - 32px));height:min(720px,calc(100dvh - 44px));border-radius:26px;box-shadow:0 20px 64px #0000001a,0 3px 12px #0000000a}
+header{padding:18px 18px 12px;background:var(--sb-background);border-bottom:0;gap:8px}
+.brand-icon{display:none}.brand-copy h2{font-size:15px;line-height:1.45;font-weight:600;letter-spacing:-.2px}.response{font-size:12px;line-height:1.55;margin-top:3px}
+.close,.options-toggle{width:40px;height:40px;border-radius:50%;align-self:flex-start}.close .icon{width:22px;height:22px;stroke-width:1.8}.options-toggle .icon{width:22px;height:22px}
+.mode{padding:8px 20px 12px;border:0;background:var(--sb-background)}.mode.compact{gap:12px}.mode.compact .help{font-size:12px}.mode .actions button{border-radius:999px;min-height:40px;padding:9px 13px}.mode .actions{gap:8px}
+.timeline .log{padding:20px 20px calc(var(--sb-dock-height,174px) + 20px);scroll-padding:20px 20px calc(var(--sb-dock-height,174px) + 20px)}
+.log:has(>.empty){display:flex;flex-direction:column}.empty{flex:1;height:auto;min-height:180px;padding:24px 8px 36px;gap:0}.empty .welcome-eyebrow{margin:0 0 8px;font-size:15px;line-height:1.5;color:var(--sb-muted)}.empty .welcome-title{margin:0;max-width:100%;font-size:32px;line-height:1.15;font-weight:650;letter-spacing:-1px;text-wrap:balance;overflow-wrap:anywhere;color:var(--sb-text)}.empty .welcome-description{font-size:14px;line-height:1.65;max-width:290px;margin:16px 0 0;text-wrap:pretty}
+.empty:has(.mode:not([hidden])){min-height:290px}.empty:has(.mode:not([hidden])) .welcome-description{display:none}.empty .mode{padding:0;margin:18px 0 0;width:100%;max-width:310px}.empty .mode>.help{font-size:13px;margin:0}.empty .mode .actions{justify-content:center;margin:20px 0 0;gap:10px}.empty .mode .actions button{font-size:13px;padding:12px 16px;min-height:44px}.empty .mode>.mode-disclosure{font-size:11px;line-height:1.6;margin:16px 0 0;max-width:none}.empty .mode .actions button:first-child{background:var(--sb-accent);border-color:transparent;color:var(--sb-on-accent)}
+.message{margin:0 14px 24px 0}.message.outgoing{margin:0 0 24px 28px}.message-meta{font-size:12px;margin-bottom:8px;padding:0 2px}.message-meta time{font-size:11px}.message-context{font-size:11px;margin-bottom:8px}
+.message .bubble{font-size:15px;line-height:1.7;border-radius:18px;padding:14px 16px;border-color:color-mix(in srgb,var(--sb-border) 65%,transparent);background:var(--sb-background)}.message .visitor{background:var(--sb-surface);border-color:transparent;border-radius:20px 20px 6px 20px}.message .ai{border-left-width:1px}.sources{margin-top:14px;padding-top:10px}.source{background:var(--sb-surface);border-color:transparent;border-radius:12px}.source-number{background:var(--sb-background)}
+.ai-progress-row{margin-right:14px}.ai-progress-row .ai-progress{border:0;background:var(--sb-surface);padding:16px;border-radius:18px}.ai-progress-label{font-size:14px}
+.composer-dock{gap:10px;padding:30px 16px 16px;background:linear-gradient(to bottom,transparent,var(--sb-background) 30px)}
+.composer-dock .composer{display:flex;flex-wrap:wrap;gap:8px;padding:14px;border-radius:26px;background:var(--sb-background);border-color:var(--sb-border);box-shadow:0 5px 22px #0000000a,0 1px 4px #00000008}
+.composer-dock .composer:focus-within{border-color:color-mix(in srgb,var(--sb-accent) 55%,var(--sb-border));box-shadow:0 5px 22px #0000000a,0 0 0 2px color-mix(in srgb,var(--sb-accent) 9%,transparent)}
+.composer textarea{flex:1 0 100%;width:100%;font-size:16px;line-height:1.55;padding:3px 4px;min-height:52px;max-height:144px}.composer button{margin-left:auto;width:42px;height:42px;min-width:42px;min-height:42px;border-radius:50%}.composer button .icon{width:22px;height:22px;stroke-width:2}.composer button:disabled:not([aria-busy="true"]){background:var(--sb-surface);color:var(--sb-muted);opacity:.65}
+.composer-dock .status{padding:0 6px;border:0;border-radius:0;background:transparent;font-size:12px;line-height:1.55}.episode-context{margin-inline:4px;padding:6px 11px;background:var(--sb-background);font-size:12px;box-shadow:none}
+.chat-options{padding:16px 20px;background:var(--sb-surface);border-bottom:0}.chat-options>strong{font-size:14px}.chat-options .help{font-size:12px}.chat-options .reset{border-radius:999px}.inline-confirm{margin:8px 16px;border-radius:16px;padding:16px}
+@media(max-width:480px){:host([data-sb-presentation="bar"]) .panel{left:8px}.panel,:host([data-sb-presentation="bar"]) .panel{right:8px;bottom:max(8px,env(safe-area-inset-bottom));width:calc(100vw - 16px);height:calc(100dvh - max(16px,calc(env(safe-area-inset-bottom) + 8px)));border-radius:24px}header{padding:14px 14px 10px}.mode{padding-inline:16px}.timeline .log{padding-inline:16px}.empty .welcome-title{font-size:29px}.composer-dock{padding:26px 12px 12px}.composer-dock .composer{padding:12px;border-radius:24px}.composer button{width:44px;height:44px;min-width:44px;min-height:44px}}
+@media(max-height:540px){header{padding-top:10px;padding-bottom:6px}.response{font-size:11px}.empty{min-height:120px;padding-block:12px}.empty:has(.mode:not([hidden])){min-height:230px}.empty .welcome-title{font-size:25px}.empty .mode{margin-top:12px}.empty .mode .actions{margin-top:12px}.composer textarea{min-height:28px;max-height:80px}.composer-dock .composer{padding:9px;border-radius:20px}.composer-dock{padding-top:20px;gap:6px}.composer button{width:36px;height:36px;min-width:36px;min-height:36px}}
+</style><button class="launcher" aria-expanded="false" aria-controls="chat-panel"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2V11.5A8.5 8.5 0 0 1 10.5 3h2A8.5 8.5 0 0 1 21 11.5ZM7 10h9M7 14h5"/></svg><span class="launcher-label">Chat with us</span><span class="launcher-arrow" aria-hidden="true">↗</span><span class="launcher-send" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></span></button><section class="panel" id="chat-panel" aria-label="Support chat" aria-hidden="true" inert hidden><header><div class="brand-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><path d="M5 4h14v13H9l-4 4V4ZM9 8h6M9 12h4"/></svg></div><div class="brand-copy"><h2>Chat with us</h2><small class="response"></small></div><button class="options-toggle" aria-label="Chat options" aria-expanded="false" aria-controls="chat-options"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button><button class="close" aria-label="Close chat"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header><section id="chat-options" class="chat-options" hidden><strong>About this chat</strong><p class="help">AI answers can be mistaken. In AI mode, messages are processed by the configured AI provider. Relevant question details may also be sent to connected services to retrieve answers. Check the sources when you need to verify an answer.</p><button class="reset secondary">End this chat</button><p class="help">Clears access from this browser. Submitted reports are kept.</p></section><div class="mode" aria-live="polite"></div><div id="conversation-view" class="log" role="log" aria-live="polite" aria-label="Conversation messages"><div class="empty"><p class="welcome-eyebrow">Get help from</p><h3 class="welcome-title">Support</h3><p class="welcome-description">Ask a question or share what’s on your mind. We’ll reply right here.</p></div></div><div class="status" role="status"></div><form class="composer"><label class="sr" for="message">Your message</label><textarea id="message" rows="1" maxlength="4000" placeholder="How can we help?" required></textarea><button type="submit" aria-label="Send message" title="Send message"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button></form></section>`;
     const $ = s => shadow.querySelector(s);
     const launcher=$('.launcher'), panel=$('.panel'), log=$('.log'), status=$('.status'), input=$('textarea'), send=$('button[type=submit]');
     // The top layer keeps an inline launcher's overlay clear of clipped/transformed ancestors.
@@ -289,7 +310,7 @@ button[aria-busy="true"]::after{content:'';display:inline-block;width:11px;heigh
     function availabilityText(){
       const hours=supportHours();
       if(hours?.enabled)return hours.is_open?'Within support hours · Replies may take time':nextOpening()?'Human support opens '+nextOpening():'No live support hours scheduled';
-      return config?.response_time?.label||'Leave a message for the team. Replies will appear here.';
+      return config?.response_time?.label||'Support team';
     }
     function drawHours(){
       if(!contactOptions){contactOptions=make('div',{});$('.chat-options').append(contactOptions);}
@@ -330,10 +351,21 @@ button[aria-busy="true"]::after{content:'';display:inline-block;width:11px;heigh
         if(conversation.ai_status==='cancelled')return 'The AI reply was cancelled. You can send another question or choose a person.';
         return '';
       }
-      return session?'':'Send a message to start a conversation with the team.';
+      return '';
+    }
+    function syncWelcome(){
+      const empty=log.querySelector('.empty');
+      const nested=empty&&!chosen&&config?.ai_available&&!closed&&!stopped;
+      const target=nested?empty:panel;
+      if(modeBox.parentNode!==target){if(nested)empty.append(modeBox);else panel.insertBefore(modeBox,timeline);}
+      if(empty){
+        const heading=empty.querySelector('.welcome-title');
+        if(heading)heading.textContent=title||config?.name||'Support';
+      }
     }
     function updateControls(){
       drawAIProgress();
+      syncWelcome();
       const needsChoice=config?.ai_available&&!chosen;
       const aiUnavailable=conversation?.support_mode==='ai'&&!config?.ai_available;
       send.disabled=busy||closed||stopped||!config||needsChoice||aiUnavailable||!input.value.trim();
@@ -354,12 +386,12 @@ button[aria-busy="true"]::after{content:'';display:inline-block;width:11px;heigh
       modeBox.hidden=false;
       modeBox.classList.toggle('compact',chosen);
       replace(modeBox,
-        !chosen&&config.ai_available?make('strong',{},'How can we help?'):null,
-        !chosen&&config.ai_available?help('Choose AI for quick answers, or leave a message for the team. AI messages are processed by our AI provider and relevant details may be sent to connected services.'):null,
+        !chosen&&config.ai_available?help('Choose AI for answers with sources, or leave a message for the team.'):null,
         chosen?help(mode==='ai'?'Answers with sources':mode==='waiting_human'?'Waiting for the team':'Human support'):null,
         actions(config.ai_available&&mode!=='ai'?action('Talk to AI',()=>chooseMode('ai')):null,
           mode!=='waiting_human'&&(!chosen||mode==='ai')?action('Talk to a person',()=>chooseMode('waiting_human')):null,
-          mode==='ai'&&conversation?.ai_status==='failed'?action('Try last question',()=>{if(input.value.trim()){status.textContent='Your unsent message is still in the editor.';return;}input.value=lastQuestion;resizeInput();input.focus();status.textContent='Review your question, then choose Send.';}):null));
+          mode==='ai'&&conversation?.ai_status==='failed'?action('Try last question',()=>{if(input.value.trim()){status.textContent='Your unsent message is still in the editor.';return;}input.value=lastQuestion;resizeInput();input.focus();status.textContent='Review your question, then choose Send.';}):null),
+        !chosen&&config.ai_available?make('p',{class:'help mode-disclosure'},'AI messages are processed by our AI provider. Relevant details may be sent to connected services.'):null);
       updateControls();if(focus)[...modeBox.querySelectorAll('button')].find(b=>b.textContent===focus)?.focus({preventScroll:true});
     }
     async function refreshConfig(){
@@ -565,7 +597,7 @@ button[aria-busy="true"]::after{content:'';display:inline-block;width:11px;heigh
       });
     }
     $('.options-toggle').onclick=()=>{const box=$('.chat-options');box.hidden=!box.hidden;$('.options-toggle').setAttribute('aria-expanded',String(!box.hidden));};
-    function resizeInput(){input.style.height='auto';input.style.height=Math.min(110,input.scrollHeight)+'px';input.style.overflowY=input.scrollHeight>110?'auto':'hidden';updateControls();}
+    function resizeInput(){input.style.height='auto';const maximum=parseFloat(getComputedStyle(input).maxHeight)||144;input.style.height=Math.min(maximum,input.scrollHeight)+'px';input.style.overflowY=input.scrollHeight>maximum?'auto':'hidden';updateControls();}
     async function poll(){
       clearTimeout(pollTimer);pollTimer=null;if(!open||stopped)return;
       if(!document.hidden){try{if(Date.now()-lastConfig>15000)await refreshConfig();if(session){if(!socket)await history();applyState(await api(path()));await refreshActivity();}}catch(error){if(!error.stale)showError(error);}}
@@ -629,7 +661,7 @@ button[aria-busy="true"]::after{content:'';display:inline-block;width:11px;heigh
       if(!await inlineConfirm('End this chat on this browser?','You will lose access to this conversation and its guest report status here. Reports already submitted are not deleted.','End chat'))return;
       busy=true;updateControls();
       try{if(session)await api(path('/session'),'DELETE');}catch(error){if(![401,403,404].includes(error.status)){showError(error);busy=false;updateControls();return;}}
-      epoch++;contactInput.value='';aiProgressCard?.remove();aiProgressCard=null;hoursCard=null;hoursSignature='';stopped=true;clearTimeout(timer);clearTimeout(pollTimer);pollTimer=null;const old=socket;socket=null;if(old)old.close();session=null;conversation=null;save();cursor=0;unreadReply=false;latest.hidden=true;replace(log,make('div',{class:'empty'},make('strong',{},'Start a new conversation.'),help('Choose support or send a message below.')));input.value='';lastQuestion='';pending=null;closed=false;chosen=false;busy=false;connecting=false;stopped=false;activity={drafts:{items:[],has_more:false},reports:{items:[],has_more:false}};activitySignature='';draftOffset=reportOffset=0;detail=null;detailValue=null;detailBox=null;reportCards.clear();replace(activityList);log.prepend(activityList);confirmationIds.clear();$('.chat-options').hidden=true;$('.options-toggle').setAttribute('aria-expanded','false');resizeInput();modeSignature='';drawMode();status.textContent='This browser’s chat access was cleared. Submitted reports still exist.';updateControls();
+      epoch++;contactInput.value='';aiProgressCard?.remove();aiProgressCard=null;hoursCard=null;hoursSignature='';stopped=true;clearTimeout(timer);clearTimeout(pollTimer);pollTimer=null;const old=socket;socket=null;if(old)old.close();session=null;conversation=null;save();cursor=0;unreadReply=false;latest.hidden=true;replace(log,make('div',{class:'empty'},make('p',{class:'welcome-eyebrow'},'Get help from'),make('h3',{class:'welcome-title'},title||config?.name||'Support'),make('p',{class:'welcome-description'},'Ask a question or share what’s on your mind. We’ll reply right here.')));input.value='';lastQuestion='';pending=null;closed=false;chosen=false;busy=false;connecting=false;stopped=false;activity={drafts:{items:[],has_more:false},reports:{items:[],has_more:false}};activitySignature='';draftOffset=reportOffset=0;detail=null;detailValue=null;detailBox=null;reportCards.clear();replace(activityList);log.prepend(activityList);confirmationIds.clear();$('.chat-options').hidden=true;$('.options-toggle').setAttribute('aria-expanded','false');resizeInput();modeSignature='';drawMode();status.textContent='This browser’s chat access was cleared. Submitted reports still exist.';updateControls();
     };
     refreshConfig().catch(error=>{status.textContent='Chat is unavailable right now. Open chat to try again.';drawMode();});
     updateControls();
