@@ -30,7 +30,7 @@ def test_signed_continuation_reaches_next_round_without_entering_answer(ai_chat)
             if json.loads(messages[-1].content).get('operation') == 'evidence_check':
                 assert all(message.provider_state is None for message in messages)
                 return GenerationResult('{"assessment":"Fixture support verified.","supported":true,"issues":[]}', (), Usage(20,10), 'stop')
-            return answered(json.loads(messages[-1].content)['passages'][0]['id'])
+            return answered(json.loads(messages[-1].content)['previous_source_ids'][0])
 
     adapter = FollowingProvider()
     generation, _ = engine(env, adapter)
@@ -117,8 +117,9 @@ def test_native_gemini_tool_round_commits_only_grounded_answer(ai_chat, tool_nam
             assert payload['contents'][-2] == {'role': 'model', 'parts': native_parts}
             result = payload['contents'][-1]['parts'][0]['functionResponse']
             assert result['id'] == 'native-tool' and result['name'] == tool_name
-            passage = result['response']['passages'][0]
-            assert passage['id'] == prompt_handles[0]
+            assert result['response']['passages'] == []
+            assert result['response']['previous_source_ids'] == [prompt_handles[0]]
+            passage = json.loads(payload['contents'][0]['parts'][0]['text'])['passages'][0]
             assert passage['text'] == 'Returns are accepted for thirty days.'
             assert env['chunk'] not in json.dumps(payload)
             if tool_name == 'support_link':

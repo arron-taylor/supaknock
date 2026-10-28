@@ -20885,6 +20885,170 @@
         }
       }
     },
+    "/api/v1/projects/{project}/ai/jobs": {
+      "get": {
+        "tags": [
+          "AI administration"
+        ],
+        "summary": "Read recent AI operation outcomes",
+        "description": "Newest twenty AI operations with safe status, stage and outcome metadata. Native administrators only; no message bodies or provider responses.\n\nAdministrator account required (browser session or native bearer token). Use an administrator feedback_session cookie or ns_ bearer session. Participant accounts cannot use this operation. Project and chat credentials and participant accounts cannot administer AI. Reading settings does not download models or generate content. Provider requests, model downloads and generation require explicit administrator actions.",
+        "operationId": "jobs_api_v1_projects__project__ai_jobs_get",
+        "security": [
+          {
+            "APIKeyCookie": []
+          },
+          {
+            "NativeBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project"
+            },
+            "description": "Project UUID or its unique identifier, such as my-app."
+          },
+          {
+            "in": "header",
+            "name": "Origin",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional on this administrator read. If present, it must equal the installation PUBLIC_BASE_URL."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AIJobOutput"
+                  },
+                  "title": "Response Jobs Api V1 Projects  Project  Ai Jobs Get"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, malformed JSON or conflicting authentication transports; validation details may appear in error.fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Required credentials are missing, invalid, expired or revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission, an invalid Origin or a missing/invalid cookie CSRF token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource is missing or concealed from this caller",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The supplied version is stale or the requested action conflicts with current state; refresh before retrying",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The JSON body exceeds 96 KiB; individual field limits also apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The request rate or operation quota was exceeded; some rate limits return Retry-After",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "When present, seconds to wait before another attempt.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The operation could not be completed; internal details and credentials are not returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Storage or a required service is temporarily unavailable; retry idempotent operations after recovery",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The AI provider returned an invalid model catalogue or decision response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/projects/{project}/ai/models/refresh": {
       "post": {
         "tags": [
@@ -32777,6 +32941,80 @@
         ],
         "title": "AIFeedbackDestinationsOutput"
       },
+      "AIJobOutput": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "attempt_count": {
+            "type": "integer",
+            "title": "Attempt Count"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "answer_outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer Outcome"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "state",
+          "attempt_count",
+          "error",
+          "answer_outcome",
+          "stage",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AIJobOutput"
+      },
       "AIKeyAction": {
         "properties": {
           "version": {
@@ -35382,6 +35620,47 @@
             ],
             "title": "Ai Progress",
             "description": "Live stage for the current authorized AI attempt. No draft text; null when inactive. Available through polling and WebSocket state frames."
+          },
+          "ai_retrying": {
+            "type": "boolean",
+            "title": "Ai Retrying",
+            "description": "Queued after an attempt or a provider wait, rather than initial admission.",
+            "default": false
+          },
+          "ai_failure_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Failure Reason",
+            "description": "Safe failure category, never a provider error body."
+          },
+          "ai_answer_outcome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "answered",
+                  "insufficient",
+                  "evidence_rejected",
+                  "check_unavailable",
+                  "action",
+                  "refuse",
+                  "clarify",
+                  "greeting",
+                  "unavailable",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Answer Outcome"
           },
           "ai_trigger_sequence": {
             "anyOf": [

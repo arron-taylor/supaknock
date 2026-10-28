@@ -11,6 +11,7 @@ test('AI progress is explicit, current-turn only, and contains no draft text',()
   for(const [stage,label] of Object.entries({thinking:'Thinking…',reading:'Reading sources…',writing:'Putting the answer together…',checking:'Checking the answer…',refining:'Refining the answer…'}))
     assert.equal(progress({...current,ai_progress:stage},3),label);
   assert.equal(progress({...current,ai_status:'queued'}),'Getting ready…');
+  assert.equal(progress({...current,ai_status:'queued',ai_retrying:true}),'Waiting to retry…');
   assert.equal(progress({...current,ai_progress:'private draft'}),'Thinking…');
   assert.equal(progress(current,4),'');
   for(const change of [{state:'closed'},{support_mode:'human'},{support_mode:'waiting_human'},

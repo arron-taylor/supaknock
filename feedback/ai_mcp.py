@@ -8,7 +8,7 @@ from feedback.ai_mcp_protocol import encode,validate,fail,finite
 from feedback.ai_mcp_transport import MCPClient,Admission
 from feedback.ai_providers import ToolSpec
 from feedback.errors import Error
-from feedback.ai_limits import MAX_SOURCES
+from feedback.ai_limits import MAX_SOURCES, MAX_TRANSCRIPT_TEXT_BYTES, MAX_TRANSCRIPT_SOURCES
 
 
 def source_url(value,origins):
@@ -25,11 +25,11 @@ def evidence(result,tool,origins,resolved=None):
     title=tool['label']
     if tool['context_kind']=='podcast_episode':
         if type(result.get('contract_version')) is not int or result.get('contract_version')!=1:fail('mcp_content','The podcast tool must return contract_version 1')
-        if result.get('status','ok') not in ('ok','unavailable','revision_changed','transcript_unavailable','timing_unavailable'):fail('mcp_content')
+        if result.get('status','ok') not in ('ok','unavailable','revision_changed','transcript_unavailable','timing_unavailable','too_large'):fail('mcp_content')
         if result.get('coverage') is not None and result['coverage'] not in ('complete','partial','unknown'):fail('mcp_content')
         if 'window_complete' in result and type(result['window_complete']) is not bool:fail('mcp_content')
         if 'next_start_seconds' in result and (not finite(result['next_start_seconds']) or not 0<=result['next_start_seconds']<=86400):fail('mcp_content')
-        if result.get('status') in ('unavailable','revision_changed','transcript_unavailable','timing_unavailable'):return []
+        if result.get('status') in ('unavailable','revision_changed','transcript_unavailable','timing_unavailable','too_large'):return []
         if not resolved or result.get('episode_id')!=resolved['episode_id']:fail('mcp_content','The podcast tool returned another episode')
         title=resolved.get('title',title)
         if not isinstance(title,str) or not 1<=len(title)<=200:fail()
@@ -43,11 +43,17 @@ def evidence(result,tool,origins,resolved=None):
         if result.get('transcript_revision')!=resolved.get('transcript_revision'):fail('mcp_content','The transcript revision changed')
         items=result.get('matches',[]) if tool['tool']['name']=='search_transcript' else result.get('segments',[])
         if not isinstance(items,list) or len(items)>MAX_SOURCES:fail()
+        complete = tool['tool']['name'] == 'get_transcript'
+        if complete and (result.get('transcript_complete') is not True or not 1 <= len(items) <= MAX_TRANSCRIPT_SOURCES):
+            fail('mcp_content', 'A complete transcript read must return the whole available snapshot')
         sources=[]
+        text_bytes=0
         for item in items:
             if not isinstance(item,dict):fail()
             text=item.get('text');ids=item.get('segment_ids')
-            if not isinstance(text,str) or not text.strip() or len(text)>2000 or len(text.encode())>1600 or not isinstance(ids,list) or not ids or len(ids)>100 or any(not isinstance(x,str) or not 1<=len(x)<=200 for x in ids):fail('mcp_limit','The transcript excerpt is invalid or too large')
+            if not isinstance(text,str) or not text.strip() or len(text)>(6000 if complete else 2000) or len(text.encode())>(6000 if complete else 1600) or not isinstance(ids,list) or not ids or len(ids)>100 or any(not isinstance(x,str) or not 1<=len(x)<=200 for x in ids):fail('mcp_limit','The transcript excerpt is invalid or too large')
+            text_bytes += len(text.encode())
+            if complete and text_bytes > MAX_TRANSCRIPT_TEXT_BYTES:fail('mcp_limit')
             start,end=item.get('start_seconds'),item.get('end_seconds')
             timing=item.get('timing_kind','unavailable')
             if timing not in ('aligned','approximate','unavailable'):fail()
@@ -185,7 +191,7 @@ class MCPTools:
             if any(s.get('revision') for s in sources):state['transcript_read']=True
             if sources:state.setdefault('reads',{})[cache_key]=(result,sources)
             # Output contains only accepted sources and safe status/coverage, not arbitrary uncited claims.
-            payload={k:result[k] for k in ('status','coverage','window_complete','next_start_seconds') if k in result}
+            payload={k:result[k] for k in ('status','coverage','window_complete','next_start_seconds','transcript_complete') if k in result}
             payload['status']=payload.get('status','ok')
             return ToolOutcome(payload,tool_sources=tuple(sources))
         except Error as error:

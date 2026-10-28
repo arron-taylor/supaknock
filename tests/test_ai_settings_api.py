@@ -85,6 +85,7 @@ def ready_knowledge(ai):
 def test_defaults_save_and_read_never_contact_provider(ai):
     current = ai['admin'].get(ai['url']).json()
     assert current['settings'] == default_ai_settings()
+    assert ai['admin'].get(ai['url'] + '/jobs').json() == []
     assert current['has_key'] is False and current['capabilities'] == {}
     assert ai['admin'].get('/api/v1/ai/providers').json() == [
         {'id': 'kodekey', 'name': 'KodeKloud KodeKey'}, {'id': 'gemini', 'name': 'Google Gemini'},
@@ -106,7 +107,7 @@ def test_defaults_save_and_read_never_contact_provider(ai):
 
 
 @pytest.mark.parametrize('client', ['anon', 'user', 'trusted', 'manager', 'other'])
-@pytest.mark.parametrize('operation', ['read', 'save', 'refresh', 'probe', 'providers', 'destinations'])
+@pytest.mark.parametrize('operation', ['read', 'save', 'refresh', 'probe', 'providers', 'destinations', 'jobs'])
 def test_native_admin_only(ai, client, operation):
     client = ai[client]
     if operation == 'read':
@@ -115,6 +116,8 @@ def test_native_admin_only(ai, client, operation):
         response = client.put(ai['url'], json={'version': 0, 'settings': default_ai_settings(), 'key': 'fixture-key'})
     elif operation == 'providers':
         response = client.get('/api/v1/ai/providers')
+    elif operation == 'jobs':
+        response = client.get(ai['url'] + '/jobs')
     elif operation == 'destinations':
         response = client.get(ai['url'] + '/feedback-destinations')
     else:

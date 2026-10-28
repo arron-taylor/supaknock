@@ -876,6 +876,9 @@ class RelationalStorage(FormsStorage, MCPStorage):
             result['ai_status'] = job['state'] if job else None
             result['ai_trigger_sequence'] = job['trigger_sequence'] if job else None
             result['ai_progress'] = None
+            result['ai_retrying'] = bool(job and job['state'] == 'queued' and job['error'])
+            result['ai_failure_reason'] = (job['error'] if job and job['state'] == 'failed' else None)
+            result['ai_answer_outcome'] = json.loads(job['payload']).get('answer_outcome') if job else None
             if (job and job['state'] == 'running' and job['lease_until'] and job['lease_until'] > time.time()
                     and row['support_mode'] == 'ai' and row['state'] == 'open'
                     and self._ai_job_authorized(c, job) and self._ai_bound_key(c, job) is not False):
@@ -3127,7 +3130,7 @@ class RelationalStorage(FormsStorage, MCPStorage):
             settings = self._ai_config(c, row['project_id'])['settings']
             # Answer/Preview: final draft plus check, one correction and recheck.
             # Long authoring runs keep global batch receipt indices across bounded jobs.
-            maximum_call_index = settings['max_tool_rounds'] + 3 if row['kind'] in ('turn', 'preview') else 3
+            maximum_call_index = settings['max_tool_rounds'] + (4 if row['kind'] == 'turn' else 3) if row['kind'] in ('turn', 'preview') else 3
             if row['kind'] == 'sections':
                 run = c.execute('SELECT coverage FROM ai_authoring_runs WHERE job_id=?', (job_id,)).fetchone()
                 coverage = json.loads(run[0]) if run and run[0] else {}
@@ -3159,9 +3162,10 @@ class RelationalStorage(FormsStorage, MCPStorage):
             raise Error(409, 'conflict', 'No dispatched reservation exists')
         if reservation['reported']:
             return
-        # Do not refund unused/uncertain allowances; charge unexpected overages immediately.
-        extra = max(0, input_tokens + output_tokens - reservation['tokens'])
-        c.execute('UPDATE ai_usage SET reserved_tokens=reserved_tokens+?,reported_input_tokens=reported_input_tokens+?,reported_output_tokens=reported_output_tokens+? WHERE project_id=? AND day=?', (extra, input_tokens, output_tokens, row['project_id'], reservation['day']))
+        # Reconcile known usage exactly once; unreported/uncertain calls keep their
+        # full reservation. Transactional serialization prevents double refunds.
+        adjustment = input_tokens + output_tokens - reservation['tokens']
+        c.execute('UPDATE ai_usage SET reserved_tokens=reserved_tokens+?,reported_input_tokens=reported_input_tokens+?,reported_output_tokens=reported_output_tokens+? WHERE project_id=? AND day=?', (adjustment, input_tokens, output_tokens, row['project_id'], reservation['day']))
         c.execute('UPDATE ai_usage_reservations SET reported=1 WHERE job_id=? AND attempt=? AND call_index=?', (row['id'], row['attempt_count'], call_index))
 
     def ai_report_usage(self, job_id, token, call_index, input_tokens, output_tokens, current_time=None):
@@ -3175,7 +3179,7 @@ class RelationalStorage(FormsStorage, MCPStorage):
 
     def ai_finish_job(self, job_id, token, state, error=None, retry_at=None, input_tokens=None, output_tokens=None, current_time=None):
         current_time = time.time() if current_time is None else current_time
-        if state not in ('succeeded', 'failed', 'queued', 'cancelled') or error not in (None, 'unavailable', 'invalid_response', 'incomplete_response', 'request_rejected', 'rate_limited', 'timeout', 'source_failed', 'embedding_failed', 'budget_exhausted', 'cancelled'):
+        if state not in ('succeeded', 'failed', 'queued', 'cancelled') or error not in (None, 'unavailable', 'invalid_response', 'incomplete_response', 'request_rejected', 'invalid_request', 'rate_limited', 'timeout', 'source_failed', 'embedding_failed', 'budget_exhausted', 'cancelled'):
             raise Error(400, 'invalid_input', 'Invalid AI job result')
         if state == 'queued' and (type(retry_at) not in (int, float) or not math.isfinite(retry_at) or not current_time <= retry_at <= current_time + 86400):
             raise Error(400, 'invalid_input', 'Invalid retry time')
@@ -3198,7 +3202,7 @@ class RelationalStorage(FormsStorage, MCPStorage):
         with self.transaction() as c:
             self._ai_admin(c, principal)
             pid = self._ai_project(c, project)
-            return [{k: row[k] for k in ('id', 'project_id', 'kind', 'resource_id', 'config_version', 'state', 'attempt_count', 'next_attempt', 'error', 'created_at', 'updated_at')}
+            return [{k: row[k] for k in ('id', 'project_id', 'kind', 'resource_id', 'config_version', 'state', 'attempt_count', 'next_attempt', 'error', 'created_at', 'updated_at')} | {'answer_outcome': json.loads(row['payload']).get('answer_outcome'), 'stage': json.loads(row['payload']).get('ai_progress', {}).get('stage')}
                 for row in c.execute('SELECT * FROM ai_jobs WHERE project_id=? ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?', (pid, limit, offset))]
 
     def ai_usage(self, project, principal, day=None):
@@ -3747,7 +3751,11 @@ class RelationalStorage(FormsStorage, MCPStorage):
         authority = json.loads(job['authority'])
         row = c.execute('SELECT * FROM chat_conversations WHERE id=?', (authority['conversation_id'],)).fetchone()
         if row and row['state'] == 'open' and row['support_mode'] == 'ai' and row['mode_version'] == authority['mode_version'] and row['last_sequence'] == authority['trigger_sequence']:
-            self._chat_set_mode(c, row, 'waiting_human', {'kind': 'system', 'user_id': None}, 'ai_failed')
+            # Technical failures are retryable by the visitor, not a request for
+            # human takeover. Retain the current mode and explicit takeover fences.
+            payload = json.loads(job['payload'])
+            payload['answer_outcome'] = 'failed'
+            c.execute('UPDATE ai_jobs SET payload=? WHERE id=?', (self._ai_json(payload), job['id']))
 
     def _ai_citation_rows(self, c, project_id, chunk_ids):
         if not isinstance(chunk_ids, list) or len(chunk_ids) > MAX_SOURCES or any(not isinstance(x, str) or not 1 <= len(x) <= 100 for x in chunk_ids) or len(set(chunk_ids)) != len(chunk_ids):
@@ -3810,7 +3818,9 @@ class RelationalStorage(FormsStorage, MCPStorage):
             self._ai_provider_health_projection(c, job['project_id'])
             return True
 
-    def ai_commit_reply(self, job_id, token, body, citation_ids, knowledge_version, *, policy_outcome=None):
+    def ai_commit_reply(self, job_id, token, body, citation_ids, knowledge_version, *, policy_outcome=None, answer_outcome='answered'):
+        if answer_outcome not in ('answered', 'insufficient', 'evidence_rejected', 'check_unavailable', 'action', 'refuse', 'clarify', 'greeting', 'unavailable'):
+            raise Error(400, 'invalid_input', 'Invalid answer outcome')
         self._ai_validate_source_ids(citation_ids)
         if not isinstance(body, str) or not body.strip() or len(body) > 4000:
             raise Error(400, 'invalid_input', 'An AI reply must contain at most 4,000 characters')
@@ -3856,7 +3866,8 @@ class RelationalStorage(FormsStorage, MCPStorage):
             c.execute('UPDATE chat_messages SET tool_sources=?,context=(SELECT context FROM chat_messages WHERE id=?) WHERE id=?',(self._ai_json(tool_sources,MAX_TOOL_EVIDENCE_BYTES),job['resource_id'],mid))
             c.execute('UPDATE chat_conversations SET last_sequence=?,updated_at=? WHERE id=?', (seq, ts, row['id']))
             c.execute('UPDATE ai_turns SET reply_message_id=?,reply_lease_token=?,reply_hash=? WHERE job_id=?', (mid, token, reply_hash, job_id))
-            c.execute("UPDATE ai_jobs SET state='succeeded',error=NULL,lease_token=NULL,lease_until=NULL,updated_at=? WHERE id=?", (ts, job_id))
+            job_payload = json.loads(job['payload']) | {'answer_outcome': answer_outcome}
+            c.execute("UPDATE ai_jobs SET state='succeeded',error=NULL,lease_token=NULL,lease_until=NULL,updated_at=?,payload=? WHERE id=?", (ts, self._ai_json(job_payload), job_id))
             project = c.execute('SELECT identifier FROM projects WHERE id=?', (row['project_id'],)).fetchone()
             payload = {'id': mid, 'type': 'chat.message_created', 'schema_version': 2, 'occurred_at': ts,
                        'project': {'id': row['project_id'], 'identifier': project['identifier']}, 'conversation': {'id': row['id']},

@@ -140,6 +140,7 @@ GET /api/v1/projects/{project}/ai/tool-connections | Read project answer sources
 PUT /api/v1/projects/{project}/ai/tool-connections | Select project answer sources and exact reviewed MCP tools
 GET /api/v1/projects/{project}/ai | Read a project's AI support settings
 PUT /api/v1/projects/{project}/ai | Save a project's AI support settings
+GET /api/v1/projects/{project}/ai/jobs | Read recent AI operation outcomes
 GET /api/v1/projects/{project}/ai/usage | Read a project's AI usage and quota status
 POST /api/v1/projects/{project}/ai/models/refresh | Refresh available models for the configured provider
 POST /api/v1/projects/{project}/ai/model/probe | Probe the configured AI reply model

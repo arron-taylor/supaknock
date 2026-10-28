@@ -1307,6 +1307,9 @@ def _validate(model, messages, capabilities, tools, maximum, required, output_fo
         raise ProviderError('invalid_request')
     # A tool result must follow the matching call exactly once. No orphaned IDs
     # or unresolved tool calls can be smuggled into another provider request.
+    # Completed history is independent of tools offered for the next response.
+    # In particular, the final answer round deliberately offers no tools. New
+    # calls are still checked against `names` when parsing the provider response.
     pending, used = set(), set()
     for message in messages:
         if message.role == 'tool':
@@ -1317,7 +1320,7 @@ def _validate(model, messages, capabilities, tools, maximum, required, output_fo
             if pending:
                 raise ProviderError('invalid_request')
             for call in message.tool_calls:
-                if call.id in used or call.name not in names:
+                if call.id in used:
                     raise ProviderError('invalid_request')
                 pending.add(call.id)
                 used.add(call.id)

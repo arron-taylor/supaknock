@@ -75,7 +75,8 @@ def answer(name, *, tools=False, text='OK'):
 
 
 @pytest.mark.parametrize('name', NEW)
-def test_text_and_tool_roundtrip_on_each_protocol(name):
+@pytest.mark.parametrize('final_tools', [True, False])
+def test_text_and_tool_roundtrip_on_each_protocol(name, final_tools):
     seen = []
     def handler(request):
         seen.append(request)
@@ -83,7 +84,7 @@ def test_text_and_tool_roundtrip_on_each_protocol(name):
     adapter = provider(name, transport=httpx.MockTransport(handler))
     result = run(adapter.generate(secret(name), 'model', (Message('system', 'Safe support'), Message('user', 'Help')), capabilities=CAPABILITIES, tools=(SEARCH,)))
     assert result.tool_calls[0].arguments == {'query': 'billing'}
-    final = run(adapter.generate(secret(name), 'model', (Message('system', 'Safe support'), Message('user', 'Help'), result.message(), Message('tool', '{"answer":"billing"}', tool_call_id='call-1')), capabilities=CAPABILITIES, tools=(SEARCH,)))
+    final = run(adapter.generate(secret(name), 'model', (Message('system', 'Safe support'), Message('user', 'Help'), result.message(), Message('tool', '{"answer":"billing"}', tool_call_id='call-1')), capabilities=CAPABILITIES, tools=(SEARCH,) if final_tools else ()))
     assert final.text == 'OK' and not final.tool_calls
     body = json.loads(seen[-1].content)
     if name in ('openai', 'ramp'):

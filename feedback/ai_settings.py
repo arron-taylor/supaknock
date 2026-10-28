@@ -65,6 +65,10 @@ class AISettingsService:
         self._admin(principal)
         return self.storage.ai_usage(project, principal)
 
+    def jobs(self, project, principal, limit=20):
+        self._admin(principal)
+        return self.storage.ai_jobs(project, principal, limit=limit)
+
     def save(self, project, principal, version, settings, *, key=_UNCHANGED):
         """An omitted key survives only within the same saved provider.
 

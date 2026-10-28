@@ -153,6 +153,18 @@ class AIFeedbackDestinationsOutput(BaseModel):
     bug: str | None
 
 
+class AIJobOutput(BaseModel):
+    id: str
+    kind: str
+    state: str
+    attempt_count: int
+    error: str | None
+    answer_outcome: str | None
+    stage: str | None
+    created_at: str
+    updated_at: str
+
+
 class AIUsageOutput(BaseModel):
     project_id: str
     day: str
@@ -185,6 +197,11 @@ def install_ai_settings(app, storage, vault, config, actor):
              description='Read today’s UTC usage without generation. Reserved tokens are conservative allowances, not billed cost. Reported counts include only completed usage reports; uncertain calls remain reserved.')
     def usage(project: str, principal: Admin):
         return service.usage(project, principal)
+
+    @app.get('/api/v1/projects/{project}/ai/jobs', tags=['AI administration'], response_model=list[AIJobOutput],
+             description='Newest twenty AI operations with safe status, stage and outcome metadata. Native administrators only; no message bodies or provider responses.')
+    def jobs(project: str, principal: Admin):
+        return service.jobs(project, principal)
 
     @app.put('/api/v1/projects/{project}/ai', tags=['AI administration'], response_model=AISettingsOutput,
              description='Save the complete versioned configuration. Changing provider clears the model, catalogue and capability evidence, and clears the old key unless a replacement is explicitly supplied. Disable AI before changing provider, then refresh its models and verify the new exact selection. Every permission is explicit; saving does not contact the provider or enable permissions implicitly.')

@@ -124,7 +124,7 @@ class MCPStorage:
                 if context not in (None,'podcast_episode'):raise Error(400,'invalid_input','Unsupported resource context')
                 if context:
                     podcasts+=1
-                    if {x['name'] for x in approved}!={'get_episode','search_transcript','get_transcript_window'}:raise Error(400,'invalid_input','Episode context requires the three reviewed podcast tools')
+                    if {x['name'] for x in approved} not in ({'get_episode','search_transcript','get_transcript_window'}, {'get_episode','search_transcript','get_transcript_window','get_transcript'}):raise Error(400,'invalid_input','Episode context requires metadata, search and window tools; complete transcript reading is optional')
                     for t in [catalog[x['name']] for x in approved]:
                         expected={'episode_id':'string'}
                         if t['name']!='get_episode':expected['transcript_revision']='string'

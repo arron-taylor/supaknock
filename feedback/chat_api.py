@@ -121,6 +121,9 @@ class ConversationOutput(BaseModel):
     mode_version: int = 1
     ai_status: Literal['queued', 'running', 'succeeded', 'failed', 'cancelled'] | None = None
     ai_progress: Literal['thinking', 'reading', 'writing', 'checking', 'refining'] | None = Field(default=None, description='Live stage for the current authorized AI attempt. No draft text; null when inactive. Available through polling and WebSocket state frames.')
+    ai_retrying: bool = Field(default=False, description='Queued after an attempt or a provider wait, rather than initial admission.')
+    ai_failure_reason: str | None = Field(default=None, description='Safe failure category, never a provider error body.')
+    ai_answer_outcome: Literal['answered', 'insufficient', 'evidence_rejected', 'check_unavailable', 'action', 'refuse', 'clarify', 'greeting', 'unavailable', 'failed'] | None = None
     ai_trigger_sequence: int | None = Field(default=None, description='Customer message sequence for the latest AI turn; use to discard progress once its reply arrives.')
     unread_count: int
     follow_up_email: str | None = Field(default=None, description="Unverified follow-up contact; conversation owner and native administrators only.")
@@ -459,7 +462,7 @@ def install_chat(app, storage, vault, config, actor):
             task = asyncio.create_task(ws.receive_text())
             while True:
                 conversation = await asyncio.to_thread(storage.chat_conversation,cid,p)
-                current_revision = (conversation['version'], conversation['mode_version'], conversation['last_sequence'], conversation['ai_status'], conversation['ai_progress'], conversation['ai_trigger_sequence'], conversation['contact_version'])
+                current_revision = (conversation['version'], conversation['mode_version'], conversation['last_sequence'], conversation['ai_status'], conversation['ai_progress'], conversation['ai_retrying'], conversation['ai_failure_reason'], conversation['ai_answer_outcome'], conversation['ai_trigger_sequence'], conversation['contact_version'])
                 if state_revision != current_revision:
                     await emit({'type':'state','conversation':conversation})
                     state_revision = current_revision

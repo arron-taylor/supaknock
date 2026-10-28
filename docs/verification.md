@@ -211,3 +211,7 @@ suite. Tests also emit an existing Starlette/httpx deprecation warning.
 
 No hosted Supabase, fresh model download, live provider inference, physical
 phone, production rollout, or GitHub publication was verified by this move.
+
+
+## October 28, 2026 — AI answer reliability
+153 targeted SQLite regressions passed, including real provider-adapter final-round history and complete transcript preloading/fallback. PostgreSQL MCP/usage regressions and corrected restart/chat suite passed; one explicitly SQLite-only migration test skipped on PostgreSQL. 52 API/OpenAPI checks and 9 widget checks passed. Disposable browser checks verified AI mode retained on failure, question retry and native-admin diagnostics. Docker smoke verified restart, recreation and backup/restore. Optional complete transcript input remains bounded and explicitly approved; citation/current-authority checks stay enforced. No live-model quality claim is implied by fixture tests.

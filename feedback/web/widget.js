@@ -4,7 +4,7 @@ function suggestionBoxAIProgress(conversation, cursor = 0) {
       !['queued', 'running'].includes(conversation.ai_status) ||
       !Number.isInteger(conversation.ai_trigger_sequence) ||
       conversation.last_sequence !== conversation.ai_trigger_sequence || cursor > conversation.ai_trigger_sequence) return '';
-  if (conversation.ai_status === 'queued') return 'Getting ready…';
+  if (conversation.ai_status === 'queued') return conversation.ai_retrying ? 'Waiting to retry…' : 'Getting ready…';
   return ({thinking:'Thinking…', reading:'Reading sources…', writing:'Putting the answer together…',
     checking:'Checking the answer…', refining:'Refining the answer…'})[conversation.ai_progress] || 'Thinking…';
 }
@@ -347,7 +347,7 @@ header{padding:18px 18px 12px;background:var(--sb-background);border-bottom:0;ga
       if(conversation?.support_mode==='ai'){
         if(!config?.ai_available)return 'AI is unavailable. Choose a person to continue.';
         if(suggestionBoxAIProgress(conversation,cursor))return '';
-        if(conversation.ai_status==='failed')return 'AI could not reply. Try your question again or choose a person.';
+        if(conversation.ai_status==='failed')return conversation.ai_failure_reason==='budget_exhausted'?'AI has reached today’s usage limit. You can choose a person for help.':conversation.ai_failure_reason==='rate_limited'?'The AI provider is busy. Try again shortly or choose a person.':'AI could not finish this reply. Try your question again or choose a person.';
         if(conversation.ai_status==='cancelled')return 'The AI reply was cancelled. You can send another question or choose a person.';
         return '';
       }

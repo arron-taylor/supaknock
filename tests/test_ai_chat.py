@@ -1,3 +1,4 @@
+from conftest import reopen_storage
 """Durable chat worker integration with the real engine and fixture providers."""
 import asyncio
 import json
@@ -75,7 +76,7 @@ def test_worker_commits_citations_usage_and_customer_unread_after_restart(ai_cha
     env, adapter = ai_chat, Adapter()
     customer = conversation(env)
     send(env, customer)
-    reopened = SQLiteStorage(env['store'].path, env['store'].base_url)
+    reopened = reopen_storage(env['store'])
     resumed = worker(env, adapter, reopened)
     assert resumed.run_once()
     assert not resumed.run_once()
@@ -89,7 +90,7 @@ def test_worker_commits_citations_usage_and_customer_unread_after_restart(ai_cha
     assert 'customer_id' not in json.dumps(adapter.calls) and '203.0.113.8' not in json.dumps(adapter.calls)
 
 
-def test_retry_after_is_honored_and_three_failures_request_human_once(ai_chat, monkeypatch):
+def test_retry_after_is_honored_and_exhaustion_preserves_ai_retry(ai_chat, monkeypatch):
     env, adapter = ai_chat, Adapter()
     adapter.failure = ProviderError('rate_limited', retryable=True, retry_after=60)
     customer = conversation(env)
@@ -107,16 +108,16 @@ def test_retry_after_is_honored_and_three_failures_request_human_once(ai_chat, m
         clock[0] = pending['next_attempt'] + 0.001
         assert not runner.run_once()
     assert jobs(env)[0]['state'] == 'failed' and jobs(env)[0]['attempt_count'] == 3
-    assert env['store'].chat_conversation(customer['conversation']['id'], customer['principal'])['support_mode'] == 'waiting_human'
+    assert env['store'].chat_conversation(customer['conversation']['id'], customer['principal'])['support_mode'] == 'ai'
     with env['store'].transaction() as c:
-        assert c.execute('SELECT count(*) FROM admin_notifications').fetchone()[0] == 1
+        assert c.execute('SELECT count(*) FROM admin_notifications').fetchone()[0] == 0
         assert c.execute("SELECT count(*) FROM chat_messages WHERE sender='ai'").fetchone()[0] == 0
     assert len(adapter.calls) == 3
     assert env['store'].ai_usage(env['project'], env['admin'])['reserved_requests'] == 3
 
 
 
-def test_long_provider_cooldown_hands_off_once_without_waiting_or_paid_retry(ai_chat):
+def test_long_provider_cooldown_preserves_ai_retry_without_paid_retry(ai_chat):
     env, adapter = ai_chat, Adapter()
     adapter.failure = ProviderError('rate_limited', retryable=True, retry_after=900)
     customer = conversation(env)
@@ -127,13 +128,13 @@ def test_long_provider_cooldown_hands_off_once_without_waiting_or_paid_retry(ai_
     assert job['state'] == 'failed' and job['attempt_count'] == 1
     assert job['next_attempt'] >= time.time() + 890
     assert not runner.run_once() and len(adapter.calls) == 1
-    assert env['store'].chat_conversation(customer['conversation']['id'], customer['principal'])['support_mode'] == 'waiting_human'
+    assert env['store'].chat_conversation(customer['conversation']['id'], customer['principal'])['support_mode'] == 'ai'
     assert env['store'].ai_usage(env['project'], env['admin'])['reserved_requests'] == 1
     pool = env['store'].ai_provider_keys(env['project'], env['admin'])
     assert pool['keys'][0]['eligible'] and pool['keys'][0]['status'] == 'cooling_down'
     assert env['store'].ai_settings(env['project'], env['admin'])['settings']['enabled']
     with env['store'].transaction() as c:
-        assert c.execute('SELECT count(*) FROM admin_notifications').fetchone()[0] == 1
+        assert c.execute('SELECT count(*) FROM admin_notifications').fetchone()[0] == 0
         assert c.execute("SELECT count(*) FROM chat_messages WHERE sender='ai'").fetchone()[0] == 0
 
 def test_exhausted_allowance_never_calls_provider_and_preserves_message(ai_chat):
@@ -176,7 +177,7 @@ def test_newer_customer_question_during_call_discards_old_reply(ai_chat):
     assert [row['sender_role'] for row in messages] == ['customer', 'customer', 'ai']
 
 
-def test_access_loss_disables_exact_model_and_hands_off_pending_turns(ai_chat):
+def test_access_loss_disables_exact_model_and_preserves_explicit_mode(ai_chat):
     env, adapter = ai_chat, Adapter()
     adapter.failure = ProviderError('access_denied')
     first, second = conversation(env), conversation(env)
@@ -190,7 +191,7 @@ def test_access_loss_disables_exact_model_and_hands_off_pending_turns(ai_chat):
     assert not key['eligible'] and key['reason'] == 'access_denied'
     assert all(job['state'] == 'failed' for job in jobs(env) if job['kind'] == 'turn')
     for customer in (first, second):
-        assert env['store'].chat_conversation(customer['conversation']['id'], customer['principal'])['support_mode'] == 'waiting_human'
+        assert env['store'].chat_conversation(customer['conversation']['id'], customer['principal'])['support_mode'] == 'ai'
     assert len(adapter.calls) == 1
     assert env['store'].ai_usage(env['project'], env['admin'])['reserved_requests'] == 1
 
@@ -270,7 +271,7 @@ def test_http_and_websocket_publish_explicit_ai_sender_and_reconnect_log(authori
         assert ws.receive_json()['message']['id'] == message['id']
 
 
-def test_late_worker_restart_fails_unpaid_wait_and_notifies_human_once(ai_chat, monkeypatch):
+def test_late_worker_restart_fails_unpaid_wait_without_human_takeover(ai_chat, monkeypatch):
     from datetime import datetime
     env, adapter = ai_chat, Adapter()
     first = conversation(env)
@@ -286,13 +287,13 @@ def test_late_worker_restart_fails_unpaid_wait_and_notifies_human_once(ai_chat, 
     assert env['store'].ai_finish_job(held['id'], held['lease_token'], 'cancelled')
     resume_time = datetime.fromisoformat(waiting['created_at'].replace('Z', '+00:00')).timestamp() + 600
     monkeypatch.setattr(time, 'time', lambda: resume_time)
-    reopened = SQLiteStorage(env['store'].path, env['store'].base_url)
+    reopened = reopen_storage(env['store'])
     resumed = worker(env, adapter, reopened)
     assert not resumed.run_once() and not resumed.run_once()
     final = next(job for job in reopened.ai_jobs(env['project'], env['admin']) if job['id'] == waiting['id'])
     assert final['state'] == 'failed' and final['error'] == 'unavailable' and final['attempt_count'] == 0
     assert not adapter.calls and reopened.ai_usage(env['project'], env['admin'])['reserved_requests'] == 0
-    assert reopened.chat_conversation(customer['conversation']['id'], customer['principal'])['support_mode'] == 'waiting_human'
+    assert reopened.chat_conversation(customer['conversation']['id'], customer['principal'])['support_mode'] == 'ai'
     with reopened.transaction() as c:
-        assert c.execute('SELECT count(*) FROM admin_notifications').fetchone()[0] == 1
+        assert c.execute('SELECT count(*) FROM admin_notifications').fetchone()[0] == 0
         assert c.execute("SELECT count(*) FROM chat_messages WHERE sender='ai'").fetchone()[0] == 0

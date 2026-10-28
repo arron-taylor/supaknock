@@ -14,9 +14,9 @@ from test_ai_chat_isolation import ai_chat,conversation,FixtureVault,FixedEmbedd
 from test_ai_tools import enable_tools,SequenceProvider,called
 
 
-def catalog():
+def catalog(full=False):
     out=[]
-    for name,props in [('get_episode',{}),('search_transcript',{'query':{'type':'string'}}),('get_transcript_window',{'start_seconds':{'type':'number'},'end_seconds':{'type':'number'}})]:
+    for name,props in [('get_episode',{}),('search_transcript',{'query':{'type':'string'}}),('get_transcript_window',{'start_seconds':{'type':'number'},'end_seconds':{'type':'number'}})] + ([('get_transcript', {})] if full else []):
         fields={'episode_id':{'type':'string'},**props}
         if name!='get_episode':fields['transcript_revision']={'type':'string'}
         out.append(definition({'name':name,'description':'Read public podcast evidence','annotations':{'readOnlyHint':True,'destructiveHint':False},'inputSchema':{'type':'object','properties':fields,'required':list(fields),'additionalProperties':False}}))
@@ -54,10 +54,10 @@ class WirePodcastClient(MCPClient):
         super().__init__(url,secret,check=check,transport=transport)
 
 
-def setup(env):
+def setup(env, full=False):
     s,p=env['store'],env['admin'];enable_tools(env,[])
     row=s.mcp_save(p,None,0,label='Podcast',url='https://podcasts.example/mcp',enabled=True,protected_token=None,link_origins=['https://podcasts.example'])
-    tools=catalog();s.mcp_discovered(p,row['id'],1,tools)
+    tools=catalog(full);s.mcp_discovered(p,row['id'],1,tools)
     s.mcp_bind(p,env['project'],0,'tools',[{'connection_id':row['id'],'connection_version':1,'context_kind':'podcast_episode','tools':[{'name':t['name'],'digest':t['digest']} for t in tools]}])
     # A podcast-only installation has neither local weights nor approved support
     # knowledge. Exercise claiming and generating under that actual readiness.
@@ -105,7 +105,7 @@ def test_topic_refusal_makes_no_mcp_or_generation_calls(ai_chat):
     from feedback.ai_topic_service import TopicGate
     from test_ai_topics import ready_topics,Decision,TopicVault
     env=ai_chat;ready_topics(env)
-    _,job,mat=setup(env)
+    _,job,mat=setup(env, full=True)
     class NeverConnect:
         def __init__(self,*args,**kwargs):raise AssertionError('Refusal must not connect to MCP')
     def never_generate(_):raise AssertionError('Refusal must not call the answer provider')
@@ -239,3 +239,59 @@ def test_twenty_excerpt_protocol_and_output_boundaries():
     assert len(validate_result(json.dumps(draft),ids)['citation_ids'])==20
     with pytest.raises(ProviderError):validate_result(json.dumps(draft|{'citation_ids':ids}),ids)
     assert output_schema('answer',ids[:20])['properties']['citation_ids']['maxItems']==20
+
+
+@pytest.mark.parametrize('oversized', [False, True])
+def test_complete_transcript_preloaded_before_generation_or_search_fallback(ai_chat, oversized):
+    from test_ai_chat_isolation import configure
+    env=ai_chat; s=env['store']; configure(env, daily_token_limit=1000000)
+    _,job,mat=setup(env, full=True)
+    class Complete(PodcastClient):
+        calls=[]
+        async def discover(self):self.check();return catalog(True)
+        async def call(self,tool,args):
+            result=await super().call(tool,args)
+            if tool['name']=='get_transcript':
+                result.pop('matches')
+                result.update(coverage='unknown', transcript_complete=not oversized)
+                if oversized:return result | {'status':'too_large'}
+                result['segments']=[{'text':('Exact available speech. '*240)+str(n), 'segment_ids':[str(n)],
+                    'timing_kind':'approximate','start_seconds':n*300,'end_seconds':(n+1)*300} for n in range(12)]
+            return result
+    remote=MCPTools(s,FixtureVault(),client_factory=Complete)
+    retrieval=RetrievalService(s,FixedEmbeddings());dispatcher=AIToolDispatcher(s,retrieval,mcp=remote)
+    search=next(t for t in dispatcher.schemas(mat) if 'query' in t.parameters['properties'])
+    def answer(messages):
+        first=json.loads(messages[1].content)
+        assert first['transcript_context']['transcript_complete'] is (not oversized)
+        assert [c[0] for c in Complete.calls][:2]==['get_episode','get_transcript']
+        data=json.loads(messages[-1].content)
+        passages=data['passages']
+        if not oversized:
+            assert len(passages)==12
+            assert sum(len(p['text'].encode()) for p in passages)>60000
+            assert passages[-1]['text'].endswith('11')
+        return GenerationResult(json.dumps({'status':'answered','body':'The host recommends a daily walk.' if oversized else 'Exact available speech.', 'citation_ids':[passages[-1]['id']]}),(),Usage(10,10,20),'stop')
+    provider=SequenceProvider(([called(search.name,{'query':'walk'})] if oversized else [])+[answer])
+    gen=AIGeneration(s,FixtureVault(),retrieval,provider_factory=lambda _:provider,tool_dispatcher=dispatcher)
+    result=asyncio.run(gen.generate(job['id'],job['lease_token'],mat['question']))
+    assert result['status']=='answered'
+    assert len(provider.calls)==(3 if oversized else 2)
+    full_alias=next(t['alias'] for t in mat['mcp_tools'] if t['tool']['name']=='get_transcript')
+    assert all(full_alias not in [t.name for t in c['tools']] for c in provider.calls)
+    reply=s.ai_commit_reply(job['id'],job['lease_token'],result['body'],result['citation_ids'],result['knowledge_version'])
+    assert len(reply['tool_sources'])==1
+    assert reply['tool_sources'][0]['revision']=='r1'
+    assert not remote.attempts
+
+
+def test_complete_transcript_rejects_false_completeness_or_excess_text():
+    from feedback.ai_mcp import evidence
+    from feedback.errors import Error
+    item={'label':'Podcast','context_kind':'podcast_episode','tool':{'name':'get_transcript'}}
+    resolved={'episode_id':'a','transcript_revision':'r','title':'Episode'}
+    segment={'text':'x'*6000,'segment_ids':['s'],'timing_kind':'unavailable'}
+    base={'contract_version':1,'episode_id':'a','transcript_revision':'r','transcript_complete':True,'segments':[segment]}
+    assert len(evidence(base,item,[],resolved))==1
+    for changed in [base|{'transcript_complete':False},base|{'segments':[]},base|{'segments':[segment]*13},base|{'segments':[segment|{'text':'x'*6001}]}]:
+        with pytest.raises(Error):evidence(changed,item,[],resolved)

@@ -53,7 +53,7 @@ class AIChatWorker:
                 raise asyncio.CancelledError()
             policy = result.get('status') if result.get('status') in ('refuse', 'clarify', 'greeting', 'unavailable') else None
             return self.storage.ai_commit_reply(job['id'], job['lease_token'], result['body'],
-                result['citation_ids'], result['knowledge_version'], policy_outcome=policy) is not None
+                result['citation_ids'], result['knowledge_version'], policy_outcome=policy, answer_outcome=result.get('outcome', result.get('status', 'answered'))) is not None
         except asyncio.CancelledError:
             # A possibly dispatched request remains charged. The bounded retry
             # retains its original authority and can never resurrect on off/on.
@@ -66,7 +66,7 @@ class AIChatWorker:
             return False
         except ProviderError as error:
             if job:
-                code = error.code if error.code in ('invalid_response', 'rate_limited', 'timeout') else 'unavailable'
+                code = error.code if error.code in ('invalid_request', 'invalid_response', 'incomplete_response', 'request_rejected', 'rate_limited', 'timeout') else 'unavailable'
                 self._failure(job, code, error.retryable, error.retry_after)
             return False
         except Error as error:

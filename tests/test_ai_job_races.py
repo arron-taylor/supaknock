@@ -186,7 +186,7 @@ def test_concurrent_duplicate_reservation_and_completion_are_counted_once(ready_
     assert counters['reported_input_tokens'] == 17
     assert counters['reported_output_tokens'] == 13
     assert counters['reserved_requests'] == 1
-    assert counters['reserved_tokens'] == 40
+    assert counters['reserved_tokens'] == 30
 
 
 def test_recovery_reserves_another_attempt_without_refunding_unknown_usage(ready_ai_jobs):
@@ -204,11 +204,33 @@ def test_recovery_reserves_another_attempt_without_refunding_unknown_usage(ready
     assert env['store'].ai_finish_job(recovered['id'], recovered['lease_token'], 'succeeded',
         input_tokens=7, output_tokens=3, current_time=stamp + 8)
     counters = usage(env, stamp)
-    assert counters['reserved_requests'] == 2 and counters['reserved_tokens'] == 60
+    assert counters['reserved_requests'] == 2 and counters['reserved_tokens'] == 40
     assert counters['reported_input_tokens'] == 7 and counters['reported_output_tokens'] == 3
     with env['store'].transaction() as connection:
         assert [row[0] for row in connection.execute(
             'SELECT attempt FROM ai_usage_reservations ORDER BY attempt')] == [1, 2]
+
+
+def test_usage_migration_reconciles_reported_calls_and_preserves_uncertain_spend(ready_ai_jobs):
+    env = ready_ai_jobs
+    stamp = time.time() + 1
+    for _ in range(2):
+        enqueue(env)
+    first, second = [env['store'].ai_claim_job(stamp) for _ in range(2)]
+    assert env['store'].ai_reserve_usage(first['id'], first['lease_token'], 100, stamp + 1)
+    assert env['store'].ai_job_before_dispatch(first['id'], first['lease_token'], stamp + 1)
+    assert env['store'].ai_finish_job(first['id'], first['lease_token'], 'succeeded', input_tokens=12, output_tokens=8, current_time=stamp + 2)
+    assert env['store'].ai_reserve_usage(second['id'], second['lease_token'], 100, stamp + 3)
+    assert env['store'].ai_job_before_dispatch(second['id'], second['lease_token'], stamp + 3)
+    from feedback.storage.sqlite import SQLiteStorage
+    migration = '028_ai_usage_reconciliation.sql' if isinstance(env['store'], SQLiteStorage) else '008_ai_usage_reconciliation.sql'
+    with env['store'].transaction(True) as c:
+        # Reconstruct the legacy counter, including an uncertain second call.
+        c.execute('UPDATE ai_usage SET reserved_tokens=200 WHERE project_id=?', (env['project'],))
+        c.execute('DELETE FROM schema_migrations WHERE version=?', (migration,))
+    restored = reopen_storage(env['store'])
+    assert restored.ai_usage(env['project'], env['principal'])['reserved_tokens'] == 120
+    assert reopen_storage(restored).ai_usage(env['project'], env['principal'])['reserved_tokens'] == 120
 
 
 @pytest.mark.parametrize('phase', ['before_dispatch', 'before_finish'])
