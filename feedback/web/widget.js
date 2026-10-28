@@ -341,7 +341,7 @@ header{padding:18px 18px 12px;background:var(--sb-background);border-bottom:0;ga
     function connectedStatus(){
       if(stopped)return 'This chat is no longer available. Open Chat options to start again.';
       if(closed)return 'This conversation is closed. You can still review its reports. Open Chat options to start again.';
-      if(config?.ai_available&&!chosen)return 'Choose AI or a person to start.';
+      if(config?.ai_available&&!chosen)return '';
       if(conversation?.support_mode==='waiting_human'&&supportHours()?.enabled&&!supportHours().is_open)return 'Your conversation is waiting for the team’s next support hours.';
       if(conversation?.support_mode==='waiting_human')return conversation.ai_status==='failed'?'AI could not reply, so this conversation is waiting for a person. The team can see it; a reply is not guaranteed immediately.':'Waiting for a person. The team can see this conversation; a reply is not guaranteed immediately.';
       if(conversation?.support_mode==='ai'){
@@ -367,6 +367,7 @@ header{padding:18px 18px 12px;background:var(--sb-background);border-bottom:0;ga
       drawAIProgress();
       syncWelcome();
       const needsChoice=config?.ai_available&&!chosen;
+      composer.hidden=!!needsChoice;
       const aiUnavailable=conversation?.support_mode==='ai'&&!config?.ai_available;
       send.disabled=busy||closed||stopped||!config||needsChoice||aiUnavailable||!input.value.trim();
       input.disabled=closed||stopped||needsChoice||aiUnavailable||!config;
