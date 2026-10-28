@@ -106,7 +106,7 @@ form{margin:0 12px 10px;border:1px solid var(--sb-border);border-radius:12px;pad
 .launcher-arrow{display:none;margin-left:auto;font-size:20px;line-height:1;font-weight:400}
 :host([data-sb-presentation="bar"]) .launcher,:host([data-sb-presentation="inline"]) .launcher{width:440px;max-width:calc(100vw - 32px);padding:15px 18px;gap:12px;background:var(--sb-background);color:var(--sb-text);border:1px solid var(--sb-border);border-radius:18px;font-size:14px;min-height:58px}
 :host([data-sb-presentation="bar"]) .launcher,:host([data-sb-presentation="bar"]) .panel{left:0;right:0;margin-inline:auto;bottom:max(16px,env(safe-area-inset-bottom));transform-origin:bottom center}
-:host([data-sb-presentation="bar"]) .panel{height:min(720px,calc(100dvh - max(32px,calc(env(safe-area-inset-bottom) + 16px))))}
+:host([data-sb-presentation="bar"]) .panel{height:min(820px,calc(100dvh - max(32px,calc(env(safe-area-inset-bottom) + 16px))))}
 :host([data-sb-presentation="bar"]) .launcher .icon,:host([data-sb-presentation="inline"]) .launcher .icon{color:var(--sb-accent);width:22px;height:22px}
 :host([data-sb-presentation="bar"]) .launcher-arrow,:host([data-sb-presentation="inline"]) .launcher-arrow{display:block;color:var(--sb-accent)}
 /* A field-like launcher: one accessible button, not a second composer. */
@@ -157,7 +157,7 @@ button[aria-busy="true"]::after{content:'';display:inline-block;width:11px;heigh
 @media(prefers-reduced-motion:reduce){.message.is-new,.ai-progress-row,.stage-entering,.stage-leaving{animation:none}.stage-leaving{display:none}}
 
 /* Embedded support: generous type, a calm welcome and a floating writing surface. */
-.panel{width:min(440px,calc(100vw - 32px));height:min(720px,calc(100dvh - 44px));border-radius:26px;box-shadow:0 20px 64px #0000001a,0 3px 12px #0000000a}
+.panel{width:min(440px,calc(100vw - 32px));height:min(820px,calc(100dvh - 44px));border-radius:26px;box-shadow:0 20px 64px #0000001a,0 3px 12px #0000000a}
 header{padding:18px 18px 12px;background:var(--sb-background);border-bottom:0;gap:8px}
 .brand-icon{display:none}.brand-copy h2{font-size:15px;line-height:1.45;font-weight:600;letter-spacing:-.2px}.response{font-size:12px;line-height:1.55;margin-top:3px}
 .close,.options-toggle{width:40px;height:40px;border-radius:50%;align-self:flex-start}.close .icon{width:22px;height:22px;stroke-width:1.8}.options-toggle .icon{width:22px;height:22px}
@@ -169,7 +169,7 @@ header{padding:18px 18px 12px;background:var(--sb-background);border-bottom:0;ga
 .message .bubble{font-size:15px;line-height:1.7;border-radius:18px;padding:14px 16px;border-color:color-mix(in srgb,var(--sb-border) 65%,transparent);background:var(--sb-background)}.message .visitor{background:var(--sb-surface);border-color:transparent;border-radius:20px 20px 6px 20px}.message .ai{border-left-width:1px}.sources{margin-top:14px;padding-top:10px}.source{background:var(--sb-surface);border-color:transparent;border-radius:12px}.source-number{background:var(--sb-background)}
 .ai-progress-row{margin-right:14px}.ai-progress-row .ai-progress{border:0;background:var(--sb-surface);padding:16px;border-radius:18px}.ai-progress-label{font-size:14px}
 .composer-dock{gap:10px;padding:30px 16px 16px;background:linear-gradient(to bottom,transparent,var(--sb-background) 30px)}
-.composer-dock .composer{display:flex;flex-wrap:wrap;gap:8px;padding:14px;border-radius:26px;background:var(--sb-background);border-color:var(--sb-border);box-shadow:0 5px 22px #0000000a,0 1px 4px #00000008}
+.composer-dock .composer{display:flex;flex-wrap:wrap;gap:8px;padding:14px;border-radius:26px;background:var(--sb-surface);background:light-dark(#fff,var(--sb-surface));border-color:var(--sb-border);box-shadow:0 5px 22px #0000000a,0 1px 4px #00000008}
 .composer-dock .composer:focus-within{border-color:color-mix(in srgb,var(--sb-accent) 55%,var(--sb-border));box-shadow:0 5px 22px #0000000a,0 0 0 2px color-mix(in srgb,var(--sb-accent) 9%,transparent)}
 .composer textarea{flex:1 0 100%;width:100%;font-size:16px;line-height:1.55;padding:3px 4px;min-height:52px;max-height:144px}.composer button{margin-left:auto;width:42px;height:42px;min-width:42px;min-height:42px;border-radius:50%}.composer button .icon{width:22px;height:22px;stroke-width:2}.composer button:disabled:not([aria-busy="true"]){background:var(--sb-surface);color:var(--sb-muted);opacity:.65}
 .composer-dock .status{padding:0 6px;border:0;border-radius:0;background:transparent;font-size:12px;line-height:1.55}.episode-context{margin-inline:4px;padding:6px 11px;background:var(--sb-background);font-size:12px;box-shadow:none}

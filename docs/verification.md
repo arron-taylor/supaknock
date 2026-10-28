@@ -1,3 +1,7 @@
+## Embedded chat height and writing surface — October 28, 2026
+
+Floating desktop chat now allows up to 820px height while retaining viewport bounds and phone layouts. The composer is white in light mode and uses the themed surface in dark mode. Nine existing widget checks passed; browser validation covered desktop, tablet, 390px/320px phones and landscape, plus real disposable SQLite message delivery. The built ARM64 image passed restart, recreation and backup-restoration smoke. No API/schema changes.
+
 ## App visual polish — October 27, 2026
 
 Release: `2026.10.27-app-polish` and `latest` published for AMD64/ARM64 (index `sha256:468ecbf630651beec9404f913107ac2a6b05540b44331d396f4c004fbd02a97c`). Live app deployment passed health, source parity and data/settings preservation checks, with an isolated restoration rehearsal.
