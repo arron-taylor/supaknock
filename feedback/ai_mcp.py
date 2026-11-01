@@ -126,7 +126,10 @@ class MCPTools:
                 client.check()
             row=self.storage.mcp_job_connection(job_id,token,item['connection_id'],item['connection_version'])
             if item['context_kind'] and item['tool']['name']=='get_episode':
-                if result.get('status')=='unavailable':return self._finished(job_id,token,rid,[],start,result)
+                if result.get('status')=='unavailable':
+                    finished=self._finished(job_id,token,rid,[],start,result)
+                    state.setdefault('unavailable_connections',set()).add(item['connection_id'])
+                    return finished
                 requested=state['snapshot']['context']['resource']['id'];canonical=result.get('episode_id')
                 if not isinstance(canonical,str) or not 1<=len(canonical)<=200 or (canonical!=requested and result.get('requested_episode_id')!=requested):fail('mcp_content','The episode could not be resolved')
                 transcript=result.get('transcript',{})
@@ -157,6 +160,12 @@ class MCPTools:
         state=self.attempts.setdefault((job_id,token),{'snapshot':snapshot,'clients':{}})
         args=deepcopy(call.arguments)
         try:
+            if item['connection_id'] in state.get('unavailable_connections',()):
+                # A denied/missing episode cannot be recovered by repeatedly
+                # asking different transcript tools in the same attempt.
+                # Keep the cache attempt-local and recheck connection authority.
+                self.storage.mcp_job_connection(job_id,token,item['connection_id'],item['connection_version'])
+                return ToolOutcome({'status':'unavailable','message':'This episode is unavailable to this chat.'})
             if item['context_kind']:
                 if not snapshot['context']:raise Error(400,'mcp_context','Select an episode before asking about its transcript')
                 if item['tool']['name']!='get_episode' and not state.get('resolved'):

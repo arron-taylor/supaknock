@@ -228,3 +228,12 @@ Bounded paired checks of two public episode questions using the same Ramp GPT 6 
 Validation: 174 targeted SQLite/provider tests and 111 real PostgreSQL generation/MCP tests passed. Both ARM64 and AMD64 application images built. The disposable container smoke passed restart, recreation and backup restoration, plus ownership, event, notification and persistence checks. No schema, API or UI change was required.
 
 Release follow-up: multi-platform image `2026.10.28-ai-latency` / `latest` published and deployed. Same-question live checks completed in 13.9 and 9.3 seconds from message creation to committed, cited, source-checked answer (previously 27.6 and 38.7 seconds). Existing data, settings, selected model, keys, bindings, volumes and Compose were preserved; only the application container changed. These are two live cases, not a latency guarantee.
+
+
+## Episode source availability — November 1, 2026
+
+An unavailable context-bound episode now has an attempt-local negative result, preventing repeated metadata/search calls for the same unavailable source. Current settings and connection authority are still rechecked; a revoked connection cannot reuse the result. If generation returns insufficient without citations and its source context was unavailable, the server reports that the transcript could not be accessed, with outcome `unavailable`. Hidden and nonexistent resources remain indistinguishable. No source-approval bypass, persistent remote cache, provider change, schema or OpenAPI change.
+
+Regression validation: 123 targeted SQLite tests passed; 27 real PostgreSQL MCP/generation tests passed with one SQLite-specific test skipped. Both ARM64 and AMD64 images built, and disposable Docker smoke verified restart, recreation and backup restoration. Multi-platform release `2026.11.01-episode-availability` and `latest` use index `sha256:ab5dcb8b60a481e86e406f36b4eab7a07c8fb095b22aeaf8fa1c3375a93d111e`. Production deployment verified 131 runtime source hashes and preserved existing records, settings, keys, bindings, environment, volume and application Compose configuration. Offline restoration rehearsal passed.
+
+A bounded live summary retry on an external public episode returned a substantive answer with six sources in 13.3 seconds after that source's catalog eligibility was corrected. This verifies the reported case, not all episodes or a latency guarantee. Source publication policy belongs to the external service; SupaKnock retains explicit project/tool approvals.

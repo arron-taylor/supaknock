@@ -295,3 +295,48 @@ def test_complete_transcript_rejects_false_completeness_or_excess_text():
     assert len(evidence(base,item,[],resolved))==1
     for changed in [base|{'transcript_complete':False},base|{'segments':[]},base|{'segments':[segment]*13},base|{'segments':[segment|{'text':'x'*6001}]}]:
         with pytest.raises(Error):evidence(changed,item,[],resolved)
+
+
+def test_unavailable_episode_is_not_reread_or_reported_as_missing_question_detail(ai_chat):
+    from feedback.ai_generation import EPISODE_UNAVAILABLE
+    env=ai_chat;s=env['store'];_,job,mat=setup(env,full=True)
+    class Unavailable(PodcastClient):
+        async def discover(self):self.check();return catalog(full=True)
+        calls=[]
+        async def call(self,tool,args):
+            self.check();self.calls.append(tool['name'])
+            assert tool['name']=='get_episode'
+            return {'contract_version':1,'status':'unavailable'}
+    remote=MCPTools(s,FixtureVault(),client_factory=Unavailable)
+    retrieval=RetrievalService(s,FixedEmbeddings())
+    dispatcher=AIToolDispatcher(s,retrieval,mcp=remote)
+    search=next(t for t in dispatcher.schemas(mat) if 'query' in t.parameters['properties'])
+    metadata=next(t for t in mat['mcp_tools'] if t['tool']['name']=='get_episode')
+    provider=SequenceProvider([called(search.name,{'query':'summary'}),called(metadata['alias'],{},call_id='call-2'),
+        GenerationResult('{"status":"insufficient","body":"","citation_ids":[]}',(),Usage(10,10,20),'stop')])
+    gen=AIGeneration(s,FixtureVault(),retrieval,provider_factory=lambda _:provider,tool_dispatcher=dispatcher)
+    result=asyncio.run(gen.generate(job['id'],job['lease_token'],'can u summarize this?'))
+    assert Unavailable.calls==['get_episode']
+    assert result['body']==EPISODE_UNAVAILABLE and result['outcome']=='unavailable'
+    assert result['citation_ids']==[] and result['status']=='insufficient'
+    reply=s.ai_commit_reply(job['id'],job['lease_token'],result['body'],[],result['knowledge_version'],answer_outcome=result['outcome'])
+    assert reply['body']==EPISODE_UNAVAILABLE
+    assert not remote.attempts
+
+
+def test_unavailable_episode_cache_still_rechecks_revoked_connection(ai_chat):
+    from feedback.ai_providers import ToolCall
+    from feedback.errors import Error
+    env=ai_chat;s=env['store'];row,job,mat=setup(env,full=True)
+    class Unavailable(PodcastClient):
+        async def discover(self):self.check();return catalog(full=True)
+        async def call(self,tool,args):
+            self.check();return {'contract_version':1,'status':'unavailable'}
+    remote=MCPTools(s,FixtureVault(),client_factory=Unavailable)
+    tool=next(t for t in mat['mcp_tools'] if t['tool']['name']=='get_transcript')
+    first=asyncio.run(remote.execute(job['id'],job['lease_token'],ToolCall('first',tool['alias'],{})))
+    assert first.payload['status']=='unavailable'
+    s.mcp_remove(env['admin'],row['id'],1)
+    with pytest.raises(Error):
+        asyncio.run(remote.execute(job['id'],job['lease_token'],ToolCall('second',tool['alias'],{})))
+    asyncio.run(remote.close(job['id'],job['lease_token']))

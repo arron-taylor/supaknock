@@ -30,6 +30,8 @@ CHECK_UNAVAILABLE = ('I couldn’t complete the answer check. '
                      'Please try again shortly or choose human support.')
 INSUFFICIENT = ('I couldn’t find enough information in the approved support material to answer that. '
                 'Please add more detail or choose human support.')
+EPISODE_UNAVAILABLE = ('I couldn’t access this episode’s transcript. '
+                       'Please try again later or ask about another episode.')
 _LINK = re.compile(r'(?:[a-z][a-z0-9+.-]*://|\bwww\.|\]\s*\(|<\s*/?\s*[a-z][^>]*>)', re.I)
 _POLICY = """You are an AI support assistant. Always be honest about being AI.
 Episode context identifies only this message’s public subject, never a user identity.
@@ -697,6 +699,12 @@ class AIGeneration:
                 if mode != 'sections' and parsed['status'] == 'answered':
                     parsed = await self._checked_answer(job_id, token, mode, settings, adapter, citations,
                         parsed, question, history, knowledge_version, next_call_index)
+                elif (mode == 'answer' and parsed['status'] == 'insufficient' and not citations.handles
+                        and transcript_context is not None
+                        and transcript_context.get('status') in ('unavailable', 'transcript_unavailable')):
+                    # Distinguish a failed source read from an unanswerable
+                    # question; never disclose why a hidden episode was denied.
+                    parsed = parsed | {'body': EPISODE_UNAVAILABLE, 'outcome': 'unavailable'}
                 parsed = citations.restore(parsed, mode)
                 ids = list(dict.fromkeys(i for section in parsed['sections'] for i in section['citation_ids'])) if mode == 'sections' else parsed['citation_ids']
                 final = self.storage.ai_job_validate_citations(job_id, token, ids)

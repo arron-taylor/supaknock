@@ -1,3 +1,9 @@
+## Episode source availability — November 1, 2026
+
+Unavailable episode reads now stop repeat lookups within the same attempt while preserving connection and permission rechecks. When a transcript cannot be accessed and no other evidence is available, chat says so directly instead of blaming the question or approved support material. No provider, model, API or schema changes.
+
+Validated with 123 targeted SQLite tests, 27 PostgreSQL tests (one SQLite-specific skip), both image architectures and disposable restart/recreation/backup restoration. Published and deployed `2026.11.01-episode-availability` / `latest`; running source parity, settings, credentials, records and volume preservation passed. An end-to-end public episode summary returned a cited, source-checked answer in 13.3 seconds after the external source's public-catalog access policy was corrected.
+
 ## Embedded chat height and writing surface — October 28, 2026
 
 Floating desktop chat now allows up to 820px height while retaining viewport bounds and phone layouts. The composer is white in light mode and uses the themed surface in dark mode. Nine existing widget checks passed; browser validation covered desktop, tablet, 390px/320px phones and landscape, plus real disposable SQLite message delivery. The built ARM64 image passed restart, recreation and backup-restoration smoke. No API/schema changes.
