@@ -737,28 +737,29 @@ class AIGeneration:
             # is independently rechecked by each dispatcher/storage operation.
             seen_calls.update(new_ids)
             messages.append(assistant_message)
-            for call in execution_calls:
+            for batch in self.tool_dispatcher.batches(job_id, token, execution_calls):
                 self._progress(job_id, token, mode, 'reading')
-                outcome = await self.tool_dispatcher.execute_async(job_id, token, call)
-                executed_calls += 1
-                if outcome.stopped:
-                    raise Error(409, 'conflict', 'This conversation is now waiting for human support')
-                if outcome.reply:
-                    self._material(job_id, token, mode)
-                    return {'body': outcome.reply, 'citation_ids': [], 'status': 'action', 'knowledge_version': knowledge_version}
-                ids = [passage['id'] for passage in (*outcome.passages,*outcome.tool_sources)]
-                checked = self.storage.ai_job_validate_citations(job_id, token, ids)
-                if checked['knowledge_version'] != knowledge_version:
-                    raise Error(409, 'conflict', 'The support evidence changed during this answer')
-                current_passages = [_passage(row) for row in checked['passages']] + checked.get('tool_sources',[])
-                added, reused, omitted = citations.add(current_passages)
-                payload = {k:v for k,v in outcome.payload.items() if k!='passages'} | {'passages': added}
-                if reused:
-                    payload['previous_source_ids'] = reused
-                    payload['note'] = 'These exact sources were already supplied in this conversation. Reuse their earlier excerpts.'
-                if omitted:
-                    payload.update(source_limit_reached=True, coverage='partial', window_complete=False, transcript_complete=False,
-                                   note='The twenty-source allowance is full. Use the supplied evidence; do not infer complete coverage.')
-                    payload.pop('next_start_seconds', None)
-                messages.append(Message('tool', render_context(payload, plain=getattr(adapter,'plain_text_context',False) is True), tool_call_id=call.id))
+                outcomes = await self.tool_dispatcher.execute_batch(job_id, token, batch)
+                for call, outcome in zip(batch, outcomes):
+                    executed_calls += 1
+                    if outcome.stopped:
+                        raise Error(409, 'conflict', 'This conversation is now waiting for human support')
+                    if outcome.reply:
+                        self._material(job_id, token, mode)
+                        return {'body': outcome.reply, 'citation_ids': [], 'status': 'action', 'knowledge_version': knowledge_version}
+                    ids = [passage['id'] for passage in (*outcome.passages,*outcome.tool_sources)]
+                    checked = self.storage.ai_job_validate_citations(job_id, token, ids)
+                    if checked['knowledge_version'] != knowledge_version:
+                        raise Error(409, 'conflict', 'The support evidence changed during this answer')
+                    current_passages = [_passage(row) for row in checked['passages']] + checked.get('tool_sources',[])
+                    added, reused, omitted = citations.add(current_passages)
+                    payload = {k:v for k,v in outcome.payload.items() if k!='passages'} | {'passages': added}
+                    if reused:
+                        payload['previous_source_ids'] = reused
+                        payload['note'] = 'These exact sources were already supplied in this conversation. Reuse their earlier excerpts.'
+                    if omitted:
+                        payload.update(source_limit_reached=True, coverage='partial', window_complete=False, transcript_complete=False,
+                                       note='The twenty-source allowance is full. Use the supplied evidence; do not infer complete coverage.')
+                        payload.pop('next_start_seconds', None)
+                    messages.append(Message('tool', render_context(payload, plain=getattr(adapter,'plain_text_context',False) is True), tool_call_id=call.id))
         _invalid()

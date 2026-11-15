@@ -4,6 +4,7 @@ Tool data cannot supply identity, destination boards, URLs or confirmation. The
 SQLite adapter owns the final authority checks and all durable side effects.
 """
 from copy import deepcopy
+import asyncio
 from dataclasses import dataclass
 import json
 
@@ -97,6 +98,28 @@ class AIToolDispatcher:
     async def execute_async(self,job_id,token,call):
         if call.name.startswith('mcp_') and self.mcp:return await self.mcp.execute(job_id,token,call)
         return self.execute(job_id,token,call)
+
+    def batches(self,job_id,token,calls):
+        """Evaluate readiness lazily, after the preceding outcomes are checked."""
+        index=0
+        while index<len(calls):
+            count=2 if (self.mcp and index+1<len(calls)
+                        and self.mcp.parallel_searches(job_id,token,calls[index],calls[index+1])) else 1
+            yield calls[index:index+count]
+            index+=count
+
+    async def execute_batch(self,job_id,token,calls):
+        if len(calls)==1:return [await self.execute_async(job_id,token,calls[0])]
+        tasks=[asyncio.create_task(self.execute_async(job_id,token,call)) for call in calls]
+        try:
+            # gather preserves requested order regardless of completion order.
+            return await asyncio.gather(*tasks)
+        finally:
+            # A fence failure or cancelled job must leave no reads running when
+            # the generation attempt closes its clients and clears evidence.
+            for task in tasks:
+                if not task.done():task.cancel()
+            await asyncio.gather(*tasks,return_exceptions=True)
 
     def _context(self, job_id, token, name):
         material = self.storage.ai_tool_context(job_id, token, name)

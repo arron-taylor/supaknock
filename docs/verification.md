@@ -1,3 +1,7 @@
+## Parallel transcript searches — November 14, 2026
+
+Independent searches of an established transcript snapshot now run in pairs, joined in request order with cancellation cleanup and the same aggregate budget. 232 SQLite checks, 64 PostgreSQL checks, and six container checks passed. Real four-search comparison: 9.020s serial versus 5.569s parallel with identical results; this is not a whole-turn benchmark. Published AMD64/ARM64 image and verified the narrow deployment with offline restoration and preservation checks. See [verification](parallel-search-verification.md).
+
 ## Embedded chat height and writing surface — October 28, 2026
 
 Floating desktop chat now allows up to 820px height while retaining viewport bounds and phone layouts. The composer is white in light mode and uses the themed surface in dark mode. Nine existing widget checks passed; browser validation covered desktop, tablet, 390px/320px phones and landscape, plus real disposable SQLite message delivery. The built ARM64 image passed restart, recreation and backup-restoration smoke. No API/schema changes.

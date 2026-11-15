@@ -1,5 +1,6 @@
 """Reviewed remote reads executed by SupaKnock, never by provider-owned connectors."""
 import asyncio
+from contextlib import asynccontextmanager
 from copy import deepcopy
 import json
 import time
@@ -76,6 +77,42 @@ class MCPTools:
         self.storage=storage;self.vault=vault;self.client_factory=client_factory
         self.admission=Admission();self.attempts={}
 
+    def parallel_searches(self,job_id,token,first,second):
+        """Only independent searches against an already established snapshot.
+
+        The first evidence read stays serial: it discovers the client, resolves
+        the episode and can refresh a changed revision before accepting evidence.
+        Subsequent searches cannot refresh that shared snapshot.
+        """
+        state=self.attempts.get((job_id,token),{})
+        if not state.get('transcript_read') or first.name!=second.name or first.arguments==second.arguments:
+            return False
+        item=next((t for t in state['snapshot']['tools'] if t['alias']==first.name),None)
+        return bool(item and item['context_kind']=='podcast_episode'
+                    and item['tool']['name']=='search_transcript'
+                    and item['connection_id'] in state['clients'])
+
+    @asynccontextmanager
+    async def _budget(self,state):
+        # Charge aggregate read time, not just wall time: two simultaneous
+        # one-second reads still consume two seconds of the 25-second allowance.
+        active=state.setdefault('read_timeouts',set())
+        def update():
+            now=time.monotonic()
+            state['elapsed']=state.get('elapsed',0)+(now-state.get('budget_clock',now))*len(active)
+            state['budget_clock']=now
+            return now
+        def reschedule(now):
+            deadline=now+max(0,25-state['elapsed'])/max(1,len(active))
+            for scope in active:
+                if not scope.expired():scope.reschedule(deadline)
+        update()
+        async with asyncio.timeout(None) as scope:
+            active.add(scope);reschedule(state['budget_clock'])
+            try:yield
+            finally:
+                now=update();active.remove(scope);reschedule(now)
+
     def schemas(self,material):
         if material['job']['kind']!='turn' or material.get('mcp',{}).get('source_mode','knowledge')=='knowledge':return ()
         result=[]
@@ -120,7 +157,7 @@ class MCPTools:
             if any(not finite(x) for x in (start_arg,end_arg)) or not 0<=start_arg<end_arg<=86400 or end_arg-start_arg>120:raise Error(400,'mcp_arguments','Read at most 120 seconds of transcript at a time')
         rid=self.storage.mcp_reserve(job_id,token,item,call_id);start=time.monotonic()
         try:
-            async with asyncio.timeout(max(.001,25-state.get('elapsed',0))), self.admission.slot(item['connection_id'],state['snapshot']['project']['project_id'],state['snapshot']['visitor']):
+            async with self._budget(state), self.admission.slot(item['connection_id'],state['snapshot']['project']['project_id'],state['snapshot']['visitor']):
                 client=await self._client(job_id,token,item,state)
                 result=await client.call(item['tool'],args)
                 client.check()
@@ -146,7 +183,6 @@ class MCPTools:
         except Error as error:
             self.storage.mcp_finish(job_id,token,rid,[],time.monotonic()-start,error.code)
             raise
-        finally:state['elapsed']=state.get('elapsed',0)+time.monotonic()-start
 
     def _finished(self,j,t,rid,sources,start,result):
         accepted=self.storage.mcp_finish(j,t,rid,sources,time.monotonic()-start)

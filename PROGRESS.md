@@ -1,3 +1,7 @@
+## Parallel transcript searches — November 14, 2026
+
+Independent searches of an established transcript snapshot now run in pairs, joined in request order with cancellation cleanup and the same aggregate budget. 232 SQLite checks, 64 PostgreSQL checks, and six container checks passed. Real four-search comparison: 9.020s serial versus 5.569s parallel with identical results; this is not a whole-turn benchmark. Published AMD64/ARM64 image and verified the narrow deployment with offline restoration and preservation checks. See [verification](docs/parallel-search-verification.md).
+
 ## Episode source availability — November 1, 2026
 
 Unavailable episode reads now stop repeat lookups within the same attempt while preserving connection and permission rechecks. When a transcript cannot be accessed and no other evidence is available, chat says so directly instead of blaming the question or approved support material. No provider, model, API or schema changes.
